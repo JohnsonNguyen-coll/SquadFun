@@ -1,37 +1,62 @@
-# Dependencies
+# Dependency directories
 node_modules/
-.pnp
-.pnp.js
+**/node_modules/
 
-# Testing
-coverage/
-
-# Production
-build/
+# Build outputs
 dist/
+**/dist/
+build/
+**/build/
+out/
+**/out/
+.next/
+**/.[Vv]ite/
+.rollup.cache/
 
-# Misc
-.DS_Store
+# Environment files
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+**/.env
+**/.env.*
 
-# Hardhat / Blockchain
-blockchain/artifacts/
-blockchain/cache/
-blockchain/typechain/
-blockchain/typechain-types/
-blockchain/.env
+# Smart Contract Artifacts (Hardhat, Foundry, Truffle)
+artifacts/
+**/artifacts/
+cache/
+**/cache/
+typechain/
+**/typechain/
+typechain-types/
+**/typechain-types/
+coverage/
+**/coverage/
+.openzeppelin/
 
-# IDEs
+# IDE / Editor files
 .vscode/
 .idea/
 *.swp
 *.swo
+.project
+.classpath
+.settings/
+.DS_Store
+Thumbs.db
 
 # Logs
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+
+# Misc
+.vercel/
+.turbo/
+.cache/
+temp/
+tmp/

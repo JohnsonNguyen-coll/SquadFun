@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 const prisma = new PrismaClient();
 
 export const getComments = async (req: Request, res: Response) => {
-  const { address } = req.params;
+  const address = req.params.address as string;
   try {
     const comments = await prisma.comment.findMany({
       where: { tokenAddress: address },
@@ -18,7 +18,7 @@ export const getComments = async (req: Request, res: Response) => {
 };
 
 export const createComment = async (req: Request, res: Response) => {
-  const { address } = req.params;
+  const address = req.params.address as string;
   const { content, signature, walletAddress } = req.body;
 
   if (!content || !signature || !walletAddress) {

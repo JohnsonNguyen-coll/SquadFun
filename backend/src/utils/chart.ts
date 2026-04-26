@@ -1,4 +1,4 @@
-import { Trade } from '@prisma/client';
+import type { Trade } from '@prisma/client';
 
 export interface Candle {
   time: number;
@@ -9,7 +9,7 @@ export interface Candle {
   volume: number;
 }
 
-export function aggregateToCandles(trades: any[], timeframeMs: number): Candle[] {
+export function aggregateToCandles(trades: Trade[], timeframeMs: number): Candle[] {
   const candles: Map<number, Candle> = new Map();
 
   trades.forEach(trade => {

@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export const getUserProfile = async (req: Request, res: Response) => {
-  const { address } = req.params;
+  const address = req.params.address as string;
   try {
     const user = await prisma.user.findUnique({
       where: { walletAddress: address }

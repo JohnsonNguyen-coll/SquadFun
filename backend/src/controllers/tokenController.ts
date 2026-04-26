@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { aggregateToCandles } from '../utils/chart.js';
 
 const prisma = new PrismaClient();
@@ -8,7 +8,7 @@ export const getTokens = async (req: Request, res: Response) => {
   const { filter, search } = req.query;
   
   try {
-    let where: any = {};
+    let where: Prisma.TokenWhereInput = {};
     if (search) {
       where.OR = [
         { name: { contains: search as string, mode: 'insensitive' } },
@@ -35,7 +35,7 @@ export const getTokens = async (req: Request, res: Response) => {
 };
 
 export const getTokenDetail = async (req: Request, res: Response) => {
-  const { address } = req.params;
+  const address = req.params.address as string;
   try {
     const token = await prisma.token.findUnique({
       where: { contractAddress: address },
@@ -54,7 +54,7 @@ export const getTokenDetail = async (req: Request, res: Response) => {
 };
 
 export const getTokenTrades = async (req: Request, res: Response) => {
-  const { address } = req.params;
+  const address = req.params.address as string;
   const { page = 1, limit = 50 } = req.query;
   
   try {
@@ -71,7 +71,7 @@ export const getTokenTrades = async (req: Request, res: Response) => {
 };
 
 export const getChartData = async (req: Request, res: Response) => {
-  const { address } = req.params;
+  const address = req.params.address as string;
   const { timeframe = '1h' } = req.query;
 
   const timeframes = {
