@@ -85,7 +85,7 @@ contract MemeToken is ERC20, ReentrancyGuard, Pausable, Ownable {
      * @param tokenAmount Amount of tokens to sell.
      * @param minEthOut Slippage protection.
      */
-    function sell(uint256 tokenAmount, uint256 minEthOut) external nonReentrant whenNotPaused {
+    function sell(uint256 tokenAmount, uint256 /* minEthOut */) external nonReentrant whenNotPaused {
         require(!graduated, "Token already graduated");
         require(tokenAmount > 0, "Must sell more than 0");
         require(balanceOf(msg.sender) >= tokenAmount, "Insufficient balance");

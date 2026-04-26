@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Token {
+  id                String   @id @default(uuid())
+  contractAddress   String   @unique
+  name              String
+  symbol            String
+  description       String?
+  imageUrl          String?
+  creatorAddress    String
+  createdAt         DateTime @default(now())
+  marketCap         Decimal  @default(0)
+  totalSupply       Decimal
+  circulatingSupply Decimal  @default(0)
+  graduated         Boolean  @default(false)
+  uniswapPool       String?
+  trades            Trade[]
+  comments          Comment[]
+}
+
+model Trade {
+  id              String   @id @default(uuid())
+  tokenAddress    String
+  traderAddress   String
+  type            String   // "buy" or "sell"
+  ethAmount       Decimal
+  tokenAmount     Decimal
+  txHash          String   @unique
+  timestamp       DateTime @default(now())
+  priceAtTrade    Decimal
+  token           Token    @relation(fields: [tokenAddress], references: [contractAddress])
+}
+
+model Comment {
+  id            String   @id @default(uuid())
+  tokenAddress  String
+  authorAddress String
+  content       String
+  createdAt     DateTime @default(now())
+  likes         Int      @default(0)
+  token         Token    @relation(fields: [tokenAddress], references: [contractAddress])
+}
+
+model User {
+  walletAddress String  @id
+  username      String? @unique
+  bio           String?
+  avatarUrl     String?
+  totalCreated  Int     @default(0)
+  totalTraded   Int     @default(0)
+}
