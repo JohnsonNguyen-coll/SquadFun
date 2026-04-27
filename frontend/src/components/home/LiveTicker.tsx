@@ -1,12 +1,36 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { MOCK_TOKENS } from '@/mocks/data';
+import { API_BASE_URL } from '@/config/constants';
+import type { Token } from '@/mocks/data';
 import { formatMON } from '@/utils/format';
+
+import { socket } from '@/socket';
 
 const LiveTicker: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tickerRef = useRef<HTMLDivElement>(null);
+  const [tokens, setTokens] = useState<Token[]>([]);
+
+  const fetchTokens = () => {
+    fetch(`${API_BASE_URL}/tokens`)
+      .then(res => res.json())
+      .then(data => setTokens(data))
+      .catch(err => console.error(err));
+  };
+
+  useEffect(() => {
+    fetchTokens();
+    
+    socket.on('global_update', (update) => {
+      console.log('Global trade update:', update);
+      fetchTokens();
+    });
+
+    return () => {
+      socket.off('global_update');
+    };
+  }, []);
 
   // Use GSAP ticker for smooth 60fps marquee
   useGSAP(() => {
@@ -34,7 +58,9 @@ const LiveTicker: React.FC = () => {
   }, []);
 
   // Double the tokens for seamless loop
-  const displayTokens = [...MOCK_TOKENS, ...MOCK_TOKENS];
+  const displayTokens = [...tokens, ...tokens];
+  
+  if (tokens.length === 0) return null;
 
   return (
     <div 
@@ -56,7 +82,7 @@ const LiveTicker: React.FC = () => {
               {token.symbol}
             </span>
             <span className="font-mono text-xs font-bold text-emerald-400">
-              +{token.priceChange24h.toFixed(1)}%
+              +{(token.priceChange24h || 0).toFixed(1)}%
             </span>
             <span className="font-mono text-[10px] text-white/20">
               {formatMON(token.reserveMon)}

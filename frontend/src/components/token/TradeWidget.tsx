@@ -1,9 +1,77 @@
 import React, { useState } from 'react';
 import GlowButton from '@/components/shared/GlowButton';
+import { useWriteContract, useAccount, useBalance } from 'wagmi';
+import { parseEther, parseAbi, formatEther } from 'viem';
+import type { Token } from '@/mocks/data';
+import confetti from 'canvas-confetti';
 
-const TradeWidget: React.FC = () => {
+interface TradeWidgetProps {
+  token: Token;
+}
+
+const TradeWidget: React.FC<TradeWidgetProps> = ({ token }) => {
   const [mode, setMode] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState('');
+  const { address } = useAccount();
+  const { writeContractAsync } = useWriteContract();
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Get user balance for UI
+  const { data: ethBalance } = useBalance({
+    address: address,
+  });
+
+  const handleTrade = async () => {
+    if (!amount || isNaN(Number(amount))) return;
+    setIsProcessing(true);
+
+    try {
+      if (mode === 'buy') {
+        await writeContractAsync({
+          address: token.contractAddress as `0x${string}`,
+          abi: parseAbi([
+            "function buy(uint256 minTokensOut) external payable"
+          ]),
+          functionName: 'buy',
+          args: [0n], 
+          value: parseEther(amount),
+        } as any);
+        
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#10b981', '#34d399', '#ffffff']
+        });
+      } else {
+        await writeContractAsync({
+          address: token.contractAddress as `0x${string}`,
+          abi: parseAbi([
+            "function sell(uint256 tokenAmount, uint256 minMonOut) external"
+          ]),
+          functionName: 'sell',
+          args: [parseEther(amount), 0n],
+        } as any);
+        
+        confetti({
+          particleCount: 100,
+          spread: 50,
+          origin: { y: 0.6 },
+          colors: ['#f43f5e', '#fb7185', '#ffffff']
+        });
+      }
+      setAmount('');
+    } catch (error: any) {
+      console.error('Full trade error:', error);
+      if (error.message?.includes('rejected')) {
+        alert('Giao dịch đã bị hủy từ ví của bạn.');
+      } else {
+        alert(`Giao dịch thất bại: ${error.shortMessage || error.message || 'Lỗi không xác định'}`);
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="glass-card p-6 bg-surface/30 border-primary/30 backdrop-blur-2xl">
@@ -25,7 +93,7 @@ const TradeWidget: React.FC = () => {
       <div className="space-y-4 mb-6">
         <div className="relative">
           <label className="block text-[10px] uppercase tracking-[0.12em] text-white/30 font-semibold mb-2 ml-1">
-            Amount in {mode === 'buy' ? 'MON' : 'Tokens'}
+            Amount in {mode === 'buy' ? 'MON' : token.symbol}
           </label>
           <input 
             type="number" 
@@ -35,13 +103,13 @@ const TradeWidget: React.FC = () => {
             className="w-full bg-background/50 border border-white/5 rounded-xl py-4 px-5 font-mono text-lg focus:outline-none focus:border-primary/50 transition-all"
           />
           <div className="absolute right-4 top-11 font-body font-semibold text-sm text-white/20">
-            {mode === 'buy' ? '◈' : 'SYM'}
+            {mode === 'buy' ? '◈' : token.symbol}
           </div>
         </div>
 
         <div className="flex justify-between px-1">
           <div className="flex gap-2">
-            {[1, 5, 10].map(v => (
+            {[0.1, 0.5, 1].map(v => (
               <button 
                 key={v} 
                 onClick={() => setAmount(v.toString())}
@@ -52,19 +120,19 @@ const TradeWidget: React.FC = () => {
             ))}
           </div>
           <div className="text-[10px] font-mono text-white/40">
-            Balance: <span className="text-white/60">0.00</span>
+            Balance: <span className="text-white/60">{ethBalance ? Number(formatEther(ethBalance.value)).toFixed(4) : '0.0000'}</span>
           </div>
         </div>
       </div>
 
       <div className="space-y-3 mb-8 p-4 rounded-xl bg-background/30 border border-white/5 text-xs font-body">
         <div className="flex justify-between">
-          <span className="text-white/40">Receive</span>
-          <span className="font-mono font-bold text-white/80">0.00 SYM</span>
+          <span className="text-white/40">Fee</span>
+          <span className="font-mono font-bold text-white/80">1.0%</span>
         </div>
         <div className="flex justify-between">
           <span className="text-white/40">Price Impact</span>
-          <span className="font-mono font-bold text-emerald-400">0.05%</span>
+          <span className="font-mono font-bold text-emerald-400">Dynamic</span>
         </div>
         <div className="flex justify-between">
           <span className="text-white/40">Slip Tolerance</span>
@@ -72,13 +140,17 @@ const TradeWidget: React.FC = () => {
         </div>
       </div>
 
-      <GlowButton variant={mode === 'buy' ? 'emerald' : 'red'}>
-        {mode === 'buy' ? 'Cast Buy Spell' : 'Sell Tokens'}
+      <GlowButton 
+        variant={mode === 'buy' ? 'emerald' : 'red'} 
+        onClick={handleTrade}
+        disabled={isProcessing || !amount}
+      >
+        {isProcessing ? 'Processing...' : (mode === 'buy' ? 'Cast Buy Spell' : 'Sell Tokens')}
       </GlowButton>
 
       <p className="mt-4 text-center text-[10px] text-white/20 font-body">
         Transactions are instant on Monad. <br />
-        Minimum received: 0.00 SYM
+        Secure Bonding Curve Trading.
       </p>
     </div>
   );

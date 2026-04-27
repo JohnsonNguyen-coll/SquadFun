@@ -1,8 +1,9 @@
 import { formatEther } from 'viem';
 
-export const formatMON = (wei: bigint): string => {
-  const val = parseFloat(formatEther(wei));
-  return val.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' ◈';
+export const formatMON = (wei: any): string => {
+  if (!wei) return '0 ◈';
+  const val = typeof wei === 'bigint' ? parseFloat(formatEther(wei)) : parseFloat(wei.toString()) / 1e18;
+  return (isNaN(val) ? 0 : val).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' ◈';
 };
 
 export const formatAddress = (addr: string): string => {
@@ -10,8 +11,10 @@ export const formatAddress = (addr: string): string => {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 };
 
-export const formatTokenAmount = (n: bigint | number): string => {
-  const num = typeof n === 'bigint' ? Number(n) / 1e18 : n;
+export const formatTokenAmount = (n: any): string => {
+  if (n === null || n === undefined) return '0';
+  const num = typeof n === 'bigint' ? Number(n) / 1e18 : Number(n);
+  if (isNaN(num)) return '0';
   if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B';
   if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
   if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';

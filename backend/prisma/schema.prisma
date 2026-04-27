@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,34 +8,37 @@ datasource db {
 }
 
 model Token {
-  id                String   @id @default(uuid())
-  contractAddress   String   @unique
+  id                String    @id @default(uuid())
+  contractAddress   String    @unique
   name              String
   symbol            String
   description       String?
   imageUrl          String?
   creatorAddress    String
-  createdAt         DateTime @default(now())
-  marketCap         Decimal  @default(0)
+  createdAt         DateTime  @default(now())
+  marketCap         Decimal   @default(0)
+  price             Decimal   @default(0)
+  priceChange24h    Float     @default(0)
+  reserveMon        Decimal   @default(0)
   totalSupply       Decimal
-  circulatingSupply Decimal  @default(0)
-  graduated         Boolean  @default(false)
+  circulatingSupply Decimal   @default(0)
+  graduated         Boolean   @default(false)
   uniswapPool       String?
-  trades            Trade[]
   comments          Comment[]
+  trades            Trade[]
 }
 
 model Trade {
-  id              String   @id @default(uuid())
-  tokenAddress    String
-  traderAddress   String
-  type            String   // "buy" or "sell"
-  ethAmount       Decimal
-  tokenAmount     Decimal
-  txHash          String   @unique
-  timestamp       DateTime @default(now())
-  priceAtTrade    Decimal
-  token           Token    @relation(fields: [tokenAddress], references: [contractAddress])
+  id            String   @id @default(uuid())
+  tokenAddress  String
+  traderAddress String
+  type          String
+  ethAmount     Decimal
+  tokenAmount   Decimal
+  txHash        String   @unique
+  timestamp     DateTime @default(now())
+  priceAtTrade  Decimal
+  token         Token    @relation(fields: [tokenAddress], references: [contractAddress])
 }
 
 model Comment {

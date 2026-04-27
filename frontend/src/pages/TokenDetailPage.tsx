@@ -1,22 +1,70 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MOCK_TOKENS } from '@/mocks/data';
+import { API_BASE_URL } from '@/config/constants';
+import type { Token } from '@/mocks/data';
+import { parseEther } from 'viem';
 import PriceChart from '@/components/token/PriceChart';
 import TradeWidget from '@/components/token/TradeWidget';
 import BondingCurveBar from '@/components/token/BondingCurveBar';
 import { formatAddress, formatTokenAmount, timeAgo } from '@/utils/format';
 import { GRADUATION_TARGET } from '@/config/constants';
+import { socket } from '@/socket';
 
 const TokenDetailPage: React.FC = () => {
   const { address } = useParams<{ address: string }>();
   const [activeInsightTab, setActiveInsightTab] = useState<'trades' | 'holders'>('trades');
   const [tradesPage, setTradesPage] = useState(1);
   const [holdersPage, setHoldersPage] = useState(1);
+  const [token, setToken] = useState<Token | null>(null);
+  const [trades, setTrades] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  const token = useMemo(() => 
-    MOCK_TOKENS.find(t => t.contractAddress.toLowerCase() === address?.toLowerCase()),
-    [address]
-  );
+  const fetchData = async () => {
+    if (!address) return;
+    try {
+      const [tokenRes, tradesRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/tokens/${address}`),
+        fetch(`${API_BASE_URL}/tokens/${address}/trades`)
+      ]);
+      
+      const tokenData = await tokenRes.json();
+      const tradesData = await tradesRes.json();
+      
+      setToken(tokenData);
+      setTrades(tradesData);
+    } catch (error) {
+      console.error('Error fetching token data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+
+    if (address) {
+      socket.emit('subscribe', address);
+      
+      socket.on('trade_update', (data) => {
+        console.log('Real-time trade update:', data);
+        fetchData();
+      });
+
+      return () => {
+        socket.emit('unsubscribe', address);
+        socket.off('trade_update');
+      };
+    }
+  }, [address]);
+
+  if (loading) {
+    return (
+      <div className="pt-32 text-center h-[70vh] flex flex-col items-center justify-center">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-6" />
+        <p className="text-white/40 font-body">Summoning token lore...</p>
+      </div>
+    );
+  }
 
   if (!token) {
     return (
@@ -31,20 +79,15 @@ const TokenDetailPage: React.FC = () => {
     );
   }
 
-  const graduationProgress = Number((token.reserveMon * 100n) / (GRADUATION_TARGET * 10n**18n));
-  const recentTrades = [
-    { wallet: '0x91d2...73f1', side: 'Buy', amount: '12,400', value: '◈ 38.2', time: '2m ago' },
-    { wallet: '0xa812...9f02', side: 'Sell', amount: '5,980', value: '◈ 17.5', time: '5m ago' },
-    { wallet: '0x03ef...51bd', side: 'Buy', amount: '20,100', value: '◈ 62.7', time: '8m ago' },
-    { wallet: '0xc0d1...ab88', side: 'Buy', amount: '4,200', value: '◈ 12.6', time: '11m ago' },
-  ];
-  const topHolders = [
-    { wallet: '0x91d2...73f1', share: '12.4%', amount: '124.0M' },
-    { wallet: '0xa812...9f02', share: '9.8%', amount: '98.0M' },
-    { wallet: '0x03ef...51bd', share: '7.2%', amount: '72.0M' },
-    { wallet: '0xc0d1...ab88', share: '5.1%', amount: '51.0M' },
-    { wallet: '0x6f33...d0aa', share: '4.7%', amount: '47.0M' },
-  ];
+  const graduationProgress = Number((parseEther(token.reserveMon?.toString() || '0') * 100n) / (GRADUATION_TARGET * 10n**18n));
+  const recentTrades = trades.map(t => ({
+    wallet: formatAddress(t.traderAddress),
+    side: t.type === 'buy' ? 'Buy' : 'Sell',
+    amount: formatTokenAmount(t.tokenAmount),
+    value: `◈ ${Number(t.ethAmount || 0).toFixed(2)}`,
+    time: timeAgo(t.timestamp)
+  }));
+  const topHolders: any[] = []; // Would need a separate endpoint if we want real holders
   const tradesPerPage = 4;
   const holdersPerPage = 4;
   const totalTradesPages = Math.max(1, Math.ceil(recentTrades.length / tradesPerPage));
@@ -99,7 +142,7 @@ const TokenDetailPage: React.FC = () => {
             </div>
           </div>
 
-          <PriceChart />
+          <PriceChart tokenAddress={token.contractAddress} currentPrice={Number(token.price || 0)} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="glass-card p-6 space-y-4">
@@ -127,24 +170,24 @@ const TokenDetailPage: React.FC = () => {
                 <div>
                   <div className="flex justify-between text-[10px] font-semibold uppercase tracking-[0.1em] text-white/40 mb-2">
                     <span>Circulating</span>
-                    <span>{((Number(token.circulatingSupply) / Number(token.totalSupply)) * 100).toFixed(1)}%</span>
+                    <span>{((Number(token.circulatingSupply || 0) / Number(token.totalSupply || 1)) * 100).toFixed(1)}%</span>
                   </div>
                   <div className="h-1.5 w-full bg-background rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-primary-highlight"
-                      style={{ width: `${(Number(token.circulatingSupply) / Number(token.totalSupply)) * 100}%` }}
+                      style={{ width: `${(Number(token.circulatingSupply || 0) / Number(token.totalSupply || 1)) * 100}%` }}
                     />
                   </div>
                 </div>
                 <div>
                   <div className="flex justify-between text-[10px] font-semibold uppercase tracking-[0.1em] text-white/40 mb-2">
                     <span>Locked (Bonding)</span>
-                    <span>{(100 - (Number(token.circulatingSupply) / Number(token.totalSupply)) * 100).toFixed(1)}%</span>
+                    <span>{(100 - (Number(token.circulatingSupply || 0) / Number(token.totalSupply || 1)) * 100).toFixed(1)}%</span>
                   </div>
                   <div className="h-1.5 w-full bg-background rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-white/10"
-                      style={{ width: `${100 - (Number(token.circulatingSupply) / Number(token.totalSupply)) * 100}%` }}
+                      style={{ width: `${100 - (Number(token.circulatingSupply || 0) / Number(token.totalSupply || 1)) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -281,7 +324,7 @@ const TokenDetailPage: React.FC = () => {
 
         {/* Right Column - Trade Widget & Progress */}
         <div className="lg:col-span-4 space-y-8">
-          <TradeWidget />
+          <TradeWidget token={token} />
           <div className="glass-card p-6">
             <BondingCurveBar progress={graduationProgress} />
           </div>

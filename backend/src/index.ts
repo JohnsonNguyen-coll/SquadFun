@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
+import { Server } from 'socket.io';
 import rateLimit from 'express-rate-limit';
 import apiRoutes from './routes/api.js';
 import { startIndexer } from './services/indexer.js';
@@ -12,9 +12,19 @@ import { connectRedis } from './services/redis.js';
 
 dotenv.config();
 
+// BigInt serialization fix
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 const app = express();
 const httpServer = createServer(app);
-const wss = new WebSocketServer({ server: httpServer });
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*", // Adjust for production
+    methods: ["GET", "POST"]
+  }
+});
 
 const PORT = process.env.PORT || 3001;
 
@@ -34,49 +44,31 @@ app.use('/api/', limiter);
 // Routes
 app.use('/api', apiRoutes);
 
-// WebSocket subscriptions
-const subscriptions = new Map<string, Set<WebSocket>>();
+// Socket.io logic
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
 
-wss.on('connection', (ws) => {
-  console.log('Client connected');
-
-  ws.on('message', (message) => {
-    try {
-      const { type, address } = JSON.parse(message.toString());
-      if (type === 'subscribe' && address) {
-        if (!subscriptions.has(address)) {
-          subscriptions.set(address, new Set());
-        }
-        subscriptions.get(address)!.add(ws);
-      }
-    } catch (e) {
-      console.error('WS Error:', e);
-    }
+  socket.on('subscribe', (address) => {
+    console.log(`Subscribing to ${address}`);
+    socket.join(address);
   });
 
-  ws.on('close', () => {
-    subscriptions.forEach((clients) => clients.delete(ws));
+  socket.on('unsubscribe', (address) => {
+    console.log(`Unsubscribing from ${address}`);
+    socket.leave(address);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected');
   });
 });
 
 // Broadcast function
-export const broadcast = (address: string, data: any) => {
-  // Global feed
-  wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(data));
-    }
-  });
-
-  // Specific token feed
-  const subscribers = subscriptions.get(address);
-  if (subscribers) {
-    subscribers.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(data));
-      }
-    });
-  }
+export const broadcast = (address: string, type: string, data: any) => {
+  // Emit to specific token room
+  io.to(address).emit(type, data);
+  // Also emit to global feed for ticker/market
+  io.emit('global_update', { address, type, data });
 };
 
 httpServer.listen(PORT, async () => {

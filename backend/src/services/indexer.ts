@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
+import { broadcast } from '../index.js';
 
 dotenv.config();
 
@@ -39,7 +40,10 @@ export async function startIndexer() {
           creatorAddress: creator,
           totalSupply: 1000000000, // as per contract
           circulatingSupply: 0,
-        }
+          reserveMon: 0,
+          price: 0,
+          priceChange24h: 0,
+        } as any
       });
       
       // Update creator's count
@@ -89,8 +93,10 @@ async function indexTokenEvents(tokenAddress: string) {
           where: { contractAddress: tokenAddress },
           data: {
             circulatingSupply: { increment: tokenAmount },
-            // marketCap would be calculated: price * totalSupply
-          }
+            price: price,
+            reserveMon: { increment: monAmount },
+            marketCap: price * 1000000000, // price * totalSupply
+          } as any
         }),
         prisma.user.upsert({
           where: { walletAddress: buyer },
@@ -99,7 +105,14 @@ async function indexTokenEvents(tokenAddress: string) {
         })
       ]);
       
-      // Notify via WebSocket (logic to be connected to wss)
+      // Notify via WebSocket
+      broadcast(tokenAddress, 'trade_update', {
+        tokenAddress,
+        type: 'buy',
+        price,
+        monAmount,
+        tokenAmount
+      });
     } catch (error) {
       console.error('Error indexing TokensPurchased:', error);
     }
@@ -129,9 +142,21 @@ async function indexTokenEvents(tokenAddress: string) {
           where: { contractAddress: tokenAddress },
           data: {
             circulatingSupply: { decrement: tokenAmount },
-          }
-        })
+            price: price,
+            reserveMon: { decrement: monAmount },
+            marketCap: price * 1000000000,
+          } as any
+        }),
       ]);
+
+      // Notify via WebSocket
+      broadcast(tokenAddress, 'trade_update', {
+        tokenAddress,
+        type: 'sell',
+        price,
+        monAmount,
+        tokenAmount
+      });
     } catch (error) {
       console.error('Error indexing TokensSold:', error);
     }

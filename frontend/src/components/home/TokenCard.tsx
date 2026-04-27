@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { Token } from '@/mocks/data';
 import { formatMON, formatTokenAmount, timeAgo, getPriceChangeColor } from '@/utils/format';
 import { GRADUATION_TARGET } from '@/config/constants';
+import { parseEther } from 'viem';
 
 interface TokenCardProps {
   token: Token;
@@ -10,7 +11,7 @@ interface TokenCardProps {
 }
 
 const TokenCard: React.FC<TokenCardProps> = ({ token, rank }) => {
-  const graduationProgress = Math.min(100, Number((token.reserveMon * 100n) / (GRADUATION_TARGET * 10n**18n)));
+  const graduationProgress = Math.min(100, Number((parseEther(token.reserveMon?.toString() || '0') * 100n) / (GRADUATION_TARGET * 10n**18n)));
   const isNew = new Date().getTime() - new Date(token.createdAt).getTime() < 3600000;
 
   return (
@@ -38,8 +39,8 @@ const TokenCard: React.FC<TokenCardProps> = ({ token, rank }) => {
         </div>
         <div className="text-right">
           <div className="font-mono text-xs text-white/40 mb-1">{timeAgo(token.createdAt)}</div>
-          <div className={`font-mono text-sm font-bold ${getPriceChangeColor(token.priceChange24h)}`}>
-            {token.priceChange24h > 0 ? '+' : ''}{token.priceChange24h.toFixed(1)}%
+          <div className={`font-mono text-sm font-bold ${getPriceChangeColor(token.priceChange24h || 0)}`}>
+            {(token.priceChange24h || 0) > 0 ? '+' : ''}{(token.priceChange24h || 0).toFixed(1)}%
           </div>
         </div>
       </div>

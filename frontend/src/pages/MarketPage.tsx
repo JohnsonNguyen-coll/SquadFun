@@ -1,15 +1,34 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import LiveTicker from '@/components/home/LiveTicker';
 import TabFilter from '@/components/home/TabFilter';
 import TokenGrid from '@/components/home/TokenGrid';
-import { MOCK_TOKENS } from '@/mocks/data';
+import { API_BASE_URL } from '@/config/constants';
+import type { Token } from '@/mocks/data';
 
 const MarketPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchTokens = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/tokens`);
+      const data = await response.json();
+      setTokens(data);
+    } catch (error) {
+      console.error('Error fetching tokens:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTokens();
+  }, []);
 
   const filteredTokens = useMemo(() => {
-    let list = [...MOCK_TOKENS];
+    let list = [...tokens];
     
     if (activeTab === 'new') {
       list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -53,16 +72,16 @@ const MarketPage: React.FC = () => {
 
             <div className="grid grid-cols-3 gap-3 md:gap-4 min-w-full sm:min-w-[420px] lg:min-w-[430px]">
               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center">
-                <div className="text-xl md:text-2xl font-body font-extrabold text-primary-highlight">{MOCK_TOKENS.length}</div>
+                <div className="text-xl md:text-2xl font-body font-extrabold text-primary-highlight">{tokens.length}</div>
                 <div className="text-[10px] uppercase tracking-[0.12em] text-white/40 mt-1">Listed</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center">
-                <div className="text-xl md:text-2xl font-body font-extrabold text-white">{MOCK_TOKENS.filter((t) => t.graduated).length}</div>
+                <div className="text-xl md:text-2xl font-body font-extrabold text-white">{tokens.filter((t) => t.graduated).length}</div>
                 <div className="text-[10px] uppercase tracking-[0.12em] text-white/40 mt-1">Graduated</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center">
                 <div className="text-xl md:text-2xl font-body font-extrabold text-primary-highlight">
-                  ◈ {Math.round(MOCK_TOKENS.reduce((sum, token) => sum + token.marketCap, 0) / 1000)}K
+                  ◈ {Math.round(tokens.reduce((sum, token) => sum + token.marketCap, 0) / 1000)}K
                 </div>
                 <div className="text-[10px] uppercase tracking-[0.12em] text-white/40 mt-1">Market Cap</div>
               </div>
@@ -92,14 +111,23 @@ const MarketPage: React.FC = () => {
           </div>
         </div>
 
-        <TokenGrid tokens={filteredTokens} />
-        
-        {filteredTokens.length === 0 && (
+        {loading ? (
           <div className="py-32 text-center">
-            <div className="text-4xl mb-4">🔮</div>
-            <h3 className="text-xl font-body font-extrabold tracking-normal text-white/60">No tokens found in the crystal ball</h3>
-            <p className="text-white/20 font-body">Try adjusting your filters or search query.</p>
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-6" />
+            <p className="text-white/40 font-body">Seeking new memes in the abyss...</p>
           </div>
+        ) : (
+          <>
+            <TokenGrid tokens={filteredTokens} />
+            
+            {filteredTokens.length === 0 && (
+              <div className="py-32 text-center">
+                <div className="text-4xl mb-4">🔮</div>
+                <h3 className="text-xl font-body font-extrabold tracking-normal text-white/60">No tokens found in the crystal ball</h3>
+                <p className="text-white/20 font-body">Try adjusting your filters or search query.</p>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>

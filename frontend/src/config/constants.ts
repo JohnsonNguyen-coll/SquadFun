@@ -13,6 +13,8 @@ export const MONAD_TESTNET_CONFIG = {
 
 export const FACTORY_ADDRESS = (import.meta.env.VITE_FACTORY_ADDRESS as `0x${string}`) || '0x4ab9E4c57Ce51184F4DC5Ba36BdbBaD749Cf88eE';
 
+export const API_BASE_URL = 'http://localhost:3001/api';
+
 export const ROUTES = {
   HOME: '/',
   TOKEN_DETAIL: '/token/:address',
