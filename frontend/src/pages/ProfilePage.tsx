@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import TokenGrid from '@/components/home/TokenGrid';
 import { formatAddress } from '@/utils/format';
+import { supabase } from '@/config/supabase';
 
 interface UserData {
   profile: {
@@ -25,6 +26,7 @@ const ProfilePage: React.FC = () => {
   
   // Edit State
   const [isEditing, setIsEditing] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [editForm, setEditForm] = useState({
     username: '',
     avatarUrl: '',
@@ -40,7 +42,7 @@ const ProfilePage: React.FC = () => {
       setData(result);
       setEditForm({
         username: result.profile.username || '',
-        avatarUrl: result.profile.avatarUrl || '🧙‍♂️',
+        avatarUrl: result.profile.avatarUrl || '',
         bio: result.profile.bio || ''
       });
     } catch (error) {
@@ -53,6 +55,35 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     if (address) fetchProfile();
   }, [address]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !connectedAddress) return;
+
+    try {
+      setUploading(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${connectedAddress}-${Math.random()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      setEditForm(prev => ({ ...prev, avatarUrl: publicUrl }));
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Upload failed!');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +98,7 @@ const ProfilePage: React.FC = () => {
       });
       if (response.ok) {
         setIsEditing(false);
-        fetchProfile(); // Refresh data
+        fetchProfile();
       }
     } catch (error) {
       console.error('Update failed:', error);
@@ -79,15 +110,18 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-20">
-      {/* Header Profile */}
       <div className="glass-card p-12 mb-16 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] rounded-full translate-x-1/2 -translate-y-1/2" />
         
         <div className="flex flex-col md:flex-row items-center justify-between gap-10 relative z-10">
           <div className="flex flex-col md:flex-row items-center gap-10">
-            <div className="w-32 h-32 rounded-3xl bg-primary shadow-2xl p-1">
-              <div className="w-full h-full bg-surface rounded-[22px] flex items-center justify-center text-5xl">
-                {data.profile.avatarUrl || '🧙‍♂️'}
+            <div className="w-32 h-32 rounded-3xl bg-primary shadow-2xl p-1 overflow-hidden">
+              <div className="w-full h-full bg-surface rounded-[22px] flex items-center justify-center text-5xl overflow-hidden">
+                {data.profile.avatarUrl ? (
+                  <img src={data.profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  '🧙‍♂️'
+                )}
               </div>
             </div>
             
@@ -121,9 +155,7 @@ const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        {/* Created Tokens */}
         <div className="lg:col-span-2 space-y-12">
           <h2 className="text-2xl font-body font-extrabold uppercase tracking-[0.1em] text-white/40">Created Tokens</h2>
           {data.tokens.length > 0 ? (
@@ -136,7 +168,6 @@ const ProfilePage: React.FC = () => {
           )}
         </div>
 
-        {/* Recent Trades */}
         <div className="space-y-8">
           <h2 className="text-2xl font-body font-extrabold uppercase tracking-[0.1em] text-white/40">Recent Activity</h2>
           <div className="glass-card p-6 space-y-4">
@@ -156,20 +187,36 @@ const ProfilePage: React.FC = () => {
                 </div>
               </div>
             ))}
-            {data.trades.length === 0 && (
-              <div className="text-center py-8 text-white/20 text-sm italic">No recent activity</div>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Edit Modal */}
       {isEditing && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center px-6">
           <div className="absolute inset-0 bg-background/80 backdrop-blur-md" onClick={() => setIsEditing(false)} />
           <div className="glass-card p-10 w-full max-w-md relative z-10 border-primary/20">
             <h3 className="text-2xl font-body font-black mb-8">Update Alchemist</h3>
             <form onSubmit={handleUpdate} className="space-y-6">
+              <div>
+                <label className="block text-[10px] uppercase tracking-widest text-white/40 font-bold mb-2 text-center">Avatar</label>
+                <div className="flex justify-center mb-4">
+                   <label className="relative group cursor-pointer">
+                      <div className="w-24 h-24 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                        {editForm.avatarUrl ? (
+                          <img src={editForm.avatarUrl} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-3xl">🧙‍♂️</span>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="text-[10px] font-bold text-white uppercase">Change</span>
+                        </div>
+                      </div>
+                      <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} disabled={uploading} />
+                   </label>
+                </div>
+                {uploading && <div className="text-[10px] text-center text-primary animate-pulse font-bold">Uploading...</div>}
+              </div>
+
               <div>
                 <label className="block text-[10px] uppercase tracking-widest text-white/40 font-bold mb-2">Username</label>
                 <input 
@@ -180,16 +227,7 @@ const ProfilePage: React.FC = () => {
                   placeholder="The Master Alchemist"
                 />
               </div>
-              <div>
-                <label className="block text-[10px] uppercase tracking-widest text-white/40 font-bold mb-2">Avatar (Emoji)</label>
-                <input 
-                  type="text"
-                  value={editForm.avatarUrl}
-                  onChange={e => setEditForm({...editForm, avatarUrl: e.target.value})}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-primary transition-colors"
-                  placeholder="🧙‍♂️"
-                />
-              </div>
+
               <div>
                 <label className="block text-[10px] uppercase tracking-widest text-white/40 font-bold mb-2">Bio</label>
                 <textarea 
@@ -199,6 +237,7 @@ const ProfilePage: React.FC = () => {
                   placeholder="Tell us about your spells..."
                 />
               </div>
+
               <div className="flex gap-4 pt-4">
                 <button 
                   type="button"
@@ -209,7 +248,8 @@ const ProfilePage: React.FC = () => {
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 px-6 py-3 rounded-xl bg-primary hover:bg-primary-glow transition-all font-bold"
+                  disabled={uploading}
+                  className="flex-1 px-6 py-3 rounded-xl bg-primary hover:bg-primary-glow transition-all font-bold disabled:opacity-50"
                 >
                   Save Changes
                 </button>
