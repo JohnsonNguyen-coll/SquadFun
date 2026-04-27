@@ -22,5 +22,6 @@ router.get('/leaderboard', leaderboardController.getLeaderboard);
 // User
 router.get('/user/:address', userController.getUserProfile);
 router.post('/user/update', userController.updateProfile);
+router.post('/user/sync', userController.syncUser);
 
 export default router;

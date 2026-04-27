@@ -9,6 +9,17 @@ const Navbar: React.FC = () => {
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({ address });
 
+  // Sync user with backend on connection
+  React.useEffect(() => {
+    if (isConnected && address) {
+      fetch('http://localhost:3001/api/user/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: address })
+      }).catch(err => console.error('Sync error:', err));
+    }
+  }, [isConnected, address]);
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-primary/15">
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">

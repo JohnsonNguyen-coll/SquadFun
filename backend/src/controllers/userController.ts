@@ -50,3 +50,17 @@ export const updateProfile = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to update profile' });
   }
 };
+
+export const syncUser = async (req: Request, res: Response) => {
+  const { walletAddress } = req.body;
+  try {
+    const user = await prisma.user.upsert({
+      where: { walletAddress },
+      update: {}, // Không thay đổi gì nếu đã có
+      create: { walletAddress } // Tạo mới nếu chưa có
+    });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to sync user' });
+  }
+};
