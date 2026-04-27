@@ -4,7 +4,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc",
     "prisma:generate": "prisma generate",
@@ -35,6 +35,7 @@
     "@types/ws": "^8.18.1",
     "prisma": "^6.4.1",
     "ts-node-dev": "^2.0.0",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.3"
   }
 }

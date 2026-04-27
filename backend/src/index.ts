@@ -8,6 +8,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import rateLimit from 'express-rate-limit';
 import apiRoutes from './routes/api.js';
 import { startIndexer } from './services/indexer.js';
+import { connectRedis } from './services/redis.js';
 
 dotenv.config();
 
@@ -80,6 +81,13 @@ export const broadcast = (address: string, data: any) => {
 
 httpServer.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
+
+  // Connect to Redis
+  try {
+    await connectRedis();
+  } catch (error) {
+    console.error('Failed to connect to Redis:', error);
+  }
 
   // Start the blockchain indexer
   try {
