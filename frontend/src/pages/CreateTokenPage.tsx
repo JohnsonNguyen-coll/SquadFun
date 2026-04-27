@@ -2,9 +2,13 @@ import React, { useState } from 'react';
 import PreviewCard from '@/components/create/PreviewCard';
 import GlowButton from '@/components/shared/GlowButton';
 import confetti from 'canvas-confetti';
+import { supabase } from '@/config/supabase';
+import { useAccount } from 'wagmi';
 
 const CreateTokenPage: React.FC = () => {
+  const { address } = useAccount();
   const [isCasting, setIsCasting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     symbol: '',
@@ -12,8 +16,41 @@ const CreateTokenPage: React.FC = () => {
     imageUrl: '',
   });
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !address) return;
+
+    try {
+      setUploading(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${address}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('tokens')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('tokens')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({ ...prev, imageUrl: publicUrl }));
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Upload failed!');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.imageUrl) {
+      alert('Please upload an image for your spell!');
+      return;
+    }
     setIsCasting(true);
 
     // Simulate Monad's fast finality
@@ -27,7 +64,6 @@ const CreateTokenPage: React.FC = () => {
       
       setIsCasting(false);
       // In real app, we'd navigate to the new token page
-      // navigate(`/token/0x...`);
     }, 2000);
   };
 
@@ -103,19 +139,27 @@ const CreateTokenPage: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="block text-[10px] uppercase tracking-[0.12em] font-semibold text-white/30 ml-1">Image URL</label>
-              <div className="flex gap-4">
+              <label className="block text-[10px] uppercase tracking-[0.12em] font-semibold text-white/30 ml-1">Token Image</label>
+              <div className="relative group cursor-pointer aspect-video w-full border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center hover:border-primary/40 hover:bg-white/5 transition-all overflow-hidden bg-background/40">
+                {formData.imageUrl ? (
+                  <img src={formData.imageUrl} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-center">
+                    <div className="text-4xl mb-3">🖼️</div>
+                    <div className="text-[10px] uppercase tracking-widest font-bold text-white/20 group-hover:text-primary/60">
+                      {uploading ? 'Uploading Spell...' : 'Choose Meme Image'}
+                    </div>
+                  </div>
+                )}
                 <input 
-                  type="url" 
-                  value={formData.imageUrl}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  placeholder="https://..."
-                  className="flex-1 bg-background/60 border border-white/10 rounded-xl py-4 px-5 text-sm font-body focus:outline-none focus:border-primary/60 transition-all placeholder:text-white/30"
+                  type="file" 
+                  className="absolute inset-0 opacity-0 cursor-pointer" 
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
                 />
-                <button type="button" className="px-6 rounded-xl bg-white/5 border border-white/10 hover:border-primary/40 hover:text-primary-highlight text-xs font-bold transition-all">
-                  Upload
-                </button>
               </div>
+              <p className="text-[9px] text-white/20 ml-1 italic">* Recommended: Square or 16:9 images</p>
             </div>
 
             <div className="p-6 rounded-2xl bg-primary/5 border border-primary/20 space-y-4">
@@ -132,7 +176,7 @@ const CreateTokenPage: React.FC = () => {
               </div>
             </div>
 
-            <GlowButton type="submit" disabled={isCasting}>
+            <GlowButton type="submit" disabled={isCasting || uploading}>
               {isCasting ? 'Casting Spell on Monad...' : 'Cast Creation Spell'}
             </GlowButton>
           </form>
