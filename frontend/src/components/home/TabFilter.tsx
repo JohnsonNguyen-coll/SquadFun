@@ -48,7 +48,7 @@ const TabFilter: React.FC<TabFilterProps> = ({ activeTab, setActiveTab }) => {
               <div className="tab-bg absolute inset-0 bg-primary/20 border border-primary/50 rounded-xl" />
             )}
             <span className="text-xs">{tab.icon}</span>
-            <span className="text-sm font-display font-bold uppercase tracking-wider">
+            <span className="text-sm font-body font-semibold uppercase tracking-[0.06em] leading-none">
               {tab.label}
             </span>
           </button>

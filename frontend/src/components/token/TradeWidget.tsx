@@ -10,13 +10,13 @@ const TradeWidget: React.FC = () => {
       <div className="flex gap-1 bg-background/50 p-1 rounded-xl mb-6">
         <button 
           onClick={() => setMode('buy')}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-display font-bold uppercase tracking-wider transition-all ${mode === 'buy' ? 'bg-emerald-400 text-background' : 'text-white/40 hover:text-white/60'}`}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-body font-semibold uppercase tracking-[0.08em] transition-all ${mode === 'buy' ? 'bg-emerald-400 text-background' : 'text-white/40 hover:text-white/60'}`}
         >
           Buy
         </button>
         <button 
           onClick={() => setMode('sell')}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-display font-bold uppercase tracking-wider transition-all ${mode === 'sell' ? 'bg-red-400 text-white' : 'text-white/40 hover:text-white/60'}`}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-body font-semibold uppercase tracking-[0.08em] transition-all ${mode === 'sell' ? 'bg-red-400 text-white' : 'text-white/40 hover:text-white/60'}`}
         >
           Sell
         </button>
@@ -24,7 +24,7 @@ const TradeWidget: React.FC = () => {
 
       <div className="space-y-4 mb-6">
         <div className="relative">
-          <label className="block text-[10px] uppercase tracking-widest text-white/30 font-bold mb-2 ml-1">
+          <label className="block text-[10px] uppercase tracking-[0.12em] text-white/30 font-semibold mb-2 ml-1">
             Amount in {mode === 'buy' ? 'MON' : 'Tokens'}
           </label>
           <input 
@@ -34,7 +34,7 @@ const TradeWidget: React.FC = () => {
             placeholder="0.0"
             className="w-full bg-background/50 border border-white/5 rounded-xl py-4 px-5 font-mono text-lg focus:outline-none focus:border-primary/50 transition-all"
           />
-          <div className="absolute right-4 top-11 font-display font-bold text-sm text-white/20">
+          <div className="absolute right-4 top-11 font-body font-semibold text-sm text-white/20">
             {mode === 'buy' ? '◈' : 'SYM'}
           </div>
         </div>

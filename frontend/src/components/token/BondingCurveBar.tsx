@@ -23,7 +23,7 @@ const BondingCurveBar: React.FC<BondingCurveBarProps> = ({ progress }) => {
     <div className="w-full space-y-4">
       <div className="flex items-end justify-between">
         <div>
-          <h4 className="text-sm font-display font-bold uppercase tracking-widest text-primary-highlight mb-1">
+          <h4 className="text-sm font-body font-extrabold uppercase tracking-[0.1em] text-primary-highlight mb-1">
             Bonding Curve Progress
           </h4>
           <p className="text-xs text-white/40 font-body">
@@ -41,10 +41,8 @@ const BondingCurveBar: React.FC<BondingCurveBarProps> = ({ progress }) => {
         {/* Animated fill */}
         <div 
           ref={fillRef}
-          className="h-full rounded-full bg-gradient-to-r from-primary via-primary-bright to-white shadow-[0_0_15px_rgba(139,92,246,0.5)] relative"
+          className="h-full rounded-full bg-primary shadow-[0_0_15px_rgba(236,72,153,0.5)]"
         >
-          {/* Subtle shine effect */}
-          <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-50" />
         </div>
         
         {/* Milestones */}

@@ -8,15 +8,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: '#07060F',
-        surface: '#110D2A',
+        background: '#12050f',
+        surface: '#250c1e',
         primary: {
-          DEFAULT: '#8B5CF6',
-          bright: '#A78BFA',
-          glow: '#7C3AED',
-          highlight: '#C4B5FD',
+          DEFAULT: '#ec4899',
+          bright: '#f472b6',
+          glow: '#db2777',
+          highlight: '#f9a8d4',
         },
-        monad: '#836EF9',
+        monad: '#f472b6',
         emerald: {
           400: '#34D399',
         },
@@ -35,11 +35,16 @@ const config: Config = {
       },
       animation: {
         'glow-pulse': 'glow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'float-soft': 'float-soft 5s ease-in-out infinite',
       },
       keyframes: {
         'glow-pulse': {
           '0%, 100%': { opacity: '1', transform: 'scale(1)' },
           '50%': { opacity: '0.7', transform: 'scale(1.05)' },
+        },
+        'float-soft': {
+          '0%, 100%': { transform: 'translateY(0px)' },
+          '50%': { transform: 'translateY(-8px)' },
         },
       },
     },

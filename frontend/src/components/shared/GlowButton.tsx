@@ -16,7 +16,7 @@ const GlowButton: React.FC<GlowButtonProps> = ({ variant = 'primary', children, 
       case 'emerald': return 'bg-emerald-400 hover:bg-emerald-500 text-background';
       case 'red': return 'bg-red-400 hover:bg-red-500 text-white';
       case 'secondary': return 'bg-surface border border-primary/40 text-primary-highlight hover:border-primary';
-      default: return 'bg-gradient-to-r from-primary to-primary-glow text-white';
+      default: return 'bg-primary hover:bg-primary-glow text-white';
     }
   };
 
@@ -24,7 +24,7 @@ const GlowButton: React.FC<GlowButtonProps> = ({ variant = 'primary', children, 
     switch (variant) {
       case 'emerald': return 'rgba(52, 211, 153, 0.5)';
       case 'red': return 'rgba(248, 113, 113, 0.5)';
-      default: return 'rgba(124, 58, 237, 0.5)';
+      default: return 'rgba(236, 72, 153, 0.5)';
     }
   };
 
@@ -56,7 +56,7 @@ const GlowButton: React.FC<GlowButtonProps> = ({ variant = 'primary', children, 
       />
       <button
         ref={buttonRef}
-        className={`relative w-full py-3 px-6 rounded-xl font-display font-bold uppercase tracking-wider transition-colors duration-200 ${getVariantStyles()} ${className}`}
+        className={`relative w-full py-3 px-6 rounded-xl font-body font-semibold uppercase tracking-[0.08em] transition-colors duration-200 ${getVariantStyles()} ${className}`}
         {...props}
       >
         {children}

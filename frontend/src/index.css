@@ -9,7 +9,8 @@
 body {
   margin: 0;
   overflow-x: hidden;
-  background-color: #07060F;
+  background-color: #12050f;
+  color: #ffe4f3;
 }
 
 /* Noise texture overlay */
@@ -37,7 +38,11 @@ body::before {
   }
   
   .glow-text {
-    text-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+    text-shadow: 0 0 12px rgba(236, 72, 153, 0.45);
+  }
+
+  .mascot-sticker {
+    @apply absolute rounded-2xl border border-primary/30 bg-surface/80 px-3 py-2 text-2xl shadow-[0_15px_40px_rgba(236,72,153,0.25)] animate-float-soft;
   }
 }
 
@@ -47,15 +52,15 @@ body::before {
 }
 
 ::-webkit-scrollbar-track {
-  background: #07060F;
+  background: #12050f;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #110D2A;
-  border: 2px solid #07060F;
+  background: #250c1e;
+  border: 2px solid #12050f;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #8B5CF6;
+  background: #ec4899;
 }

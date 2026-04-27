@@ -29,7 +29,7 @@ const PriceChart: React.FC = () => {
     <div className="h-[400px] w-full p-4 glass-card">
       <div className="flex items-center justify-between mb-6 px-2">
         <div>
-          <h3 className="text-sm font-display font-bold uppercase tracking-widest text-white/40">Price Performance</h3>
+          <h3 className="text-sm font-body font-extrabold uppercase tracking-[0.1em] text-white/40">Price Performance</h3>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-mono font-bold">0.000020 ◈</span>
             <span className="text-sm font-mono font-bold text-emerald-400">+12.5%</span>

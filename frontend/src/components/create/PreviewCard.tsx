@@ -31,9 +31,13 @@ const PreviewCard: React.FC<PreviewCardProps> = ({ formData }) => {
       <div 
         ref={cardRef}
         className="relative w-full h-full transition-transform duration-500 transform-style-3d"
+        style={{ transformStyle: 'preserve-3d' }}
       >
         {/* Front side (Token Card) */}
-        <div className="absolute inset-0 backface-hidden glass-card p-8 flex flex-col items-center text-center justify-between border-primary/40 shadow-[0_0_50px_rgba(139,92,246,0.2)]">
+        <div
+          className="absolute inset-0 backface-hidden glass-card p-8 flex flex-col items-center text-center justify-between border-primary/40 shadow-[0_0_50px_rgba(139,92,246,0.2)]"
+          style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
+        >
           <div className="w-full">
             <div className="w-32 h-32 rounded-3xl bg-background/50 border-2 border-primary/20 mx-auto mb-8 overflow-hidden flex items-center justify-center">
               {formData.imageUrl ? (
@@ -42,7 +46,7 @@ const PreviewCard: React.FC<PreviewCardProps> = ({ formData }) => {
                 <span className="text-4xl">🔮</span>
               )}
             </div>
-            <h3 className="text-3xl font-display font-bold mb-2 tracking-tight truncate w-full">
+            <h3 className="text-3xl font-body font-black mb-2 tracking-normal leading-tight truncate w-full">
               {formData.name || 'Your Meme'}
             </h3>
             <span className="inline-block px-3 py-1 rounded-lg bg-primary/10 border border-primary/20 font-mono text-sm font-bold text-primary-highlight uppercase mb-6">
@@ -57,7 +61,7 @@ const PreviewCard: React.FC<PreviewCardProps> = ({ formData }) => {
             <div className="h-1.5 w-full bg-background rounded-full overflow-hidden">
               <div className="h-full w-0 bg-primary-highlight" />
             </div>
-            <div className="flex justify-between text-[10px] font-mono font-bold text-white/20 uppercase tracking-widest">
+            <div className="flex justify-between text-[10px] font-mono font-semibold text-white/20 uppercase tracking-[0.1em]">
               <span>Bonding Curve</span>
               <span>0%</span>
             </div>
@@ -71,9 +75,9 @@ const PreviewCard: React.FC<PreviewCardProps> = ({ formData }) => {
         {/* Back side (Spell Details) */}
         <div 
           className="absolute inset-0 backface-hidden glass-card p-8 flex flex-col justify-between border-monad/40 shadow-[0_0_50px_rgba(131,110,249,0.2)]"
-          style={{ transform: 'rotateY(180deg)' }}
+          style={{ transform: 'rotateY(180deg) translateZ(0)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
         >
-          <h3 className="text-xl font-display font-bold mb-8 text-monad-highlight uppercase tracking-[0.2em]">Spell Details</h3>
+          <h3 className="text-xl font-body font-extrabold mb-8 text-monad-highlight uppercase tracking-[0.08em]">Spell Details</h3>
           
           <div className="space-y-6">
             <div className="flex justify-between items-center py-3 border-b border-white/5">

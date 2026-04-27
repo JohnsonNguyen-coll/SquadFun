@@ -38,7 +38,7 @@ const subscriptions = new Map<string, Set<WebSocket>>();
 
 wss.on('connection', (ws) => {
   console.log('Client connected');
-  
+
   ws.on('message', (message) => {
     try {
       const { type, address } = JSON.parse(message.toString());
@@ -80,7 +80,7 @@ export const broadcast = (address: string, data: any) => {
 
 httpServer.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
-  
+
   // Start the blockchain indexer
   try {
     await startIndexer();

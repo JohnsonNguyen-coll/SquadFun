@@ -52,7 +52,7 @@ const LiveTicker: React.FC = () => {
               alt={token.name} 
               className="w-6 h-6 rounded-full grayscale group-hover/item:grayscale-0 transition-all" 
             />
-            <span className="font-display font-bold text-sm tracking-tight text-white/80 group-hover/item:text-white">
+            <span className="font-body font-semibold text-sm tracking-normal text-white/80 group-hover/item:text-white">
               {token.symbol}
             </span>
             <span className="font-mono text-xs font-bold text-emerald-400">
