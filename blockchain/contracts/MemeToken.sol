@@ -22,12 +22,12 @@ contract MemeToken is ERC20, ReentrancyGuard, Pausable, Ownable {
     address public creator;
     uint256 public createdAt;
     uint256 public tokensSold;
-    uint256 public totalEthRaised;
+    uint256 public totalMonRaised;
     address public platformTreasury;
     bool public graduated;
 
-    event TokensPurchased(address indexed buyer, uint256 ethIn, uint256 tokensOut, uint256 newPrice);
-    event TokensSold(address indexed seller, uint256 tokensIn, uint256 ethOut, uint256 newPrice);
+    event TokensPurchased(address indexed buyer, uint256 monIn, uint256 tokensOut, uint256 newPrice);
+    event TokensSold(address indexed seller, uint256 tokensIn, uint256 monOut, uint256 newPrice);
     event Graduated(address indexed tokenAddress, address uniswapPool);
 
     constructor(
@@ -49,7 +49,7 @@ contract MemeToken is ERC20, ReentrancyGuard, Pausable, Ownable {
     }
 
     /**
-     * @dev Buy tokens using ETH based on the bonding curve.
+     * @dev Buy tokens using MON based on the bonding curve.
      * @param minTokensOut Slippage protection.
      */
     function buy(uint256 minTokensOut) external payable nonReentrant whenNotPaused {
@@ -57,58 +57,58 @@ contract MemeToken is ERC20, ReentrancyGuard, Pausable, Ownable {
         require(msg.value > 0, "Must send ETH");
 
         uint256 fee = (msg.value * FEE_PERCENT) / 100;
-        uint256 ethAfterFee = msg.value - fee;
+        uint256 monAfterFee = msg.value - fee;
         
         // Transfer fee to treasury
         (bool feeSuccess, ) = platformTreasury.call{value: fee}("");
         require(feeSuccess, "Fee transfer failed");
 
-        uint256 tokensToMint = calculateTokensForEth(ethAfterFee);
+        uint256 tokensToMint = calculateTokensForMon(monAfterFee);
         require(tokensToMint >= minTokensOut, "Slippage too high");
         require(tokensToMint <= (TOTAL_SUPPLY * MAX_BUY_PERCENT) / 100, "Exceeds max buy limit");
         require(tokensSold + tokensToMint <= TOTAL_SUPPLY, "Not enough supply left");
 
         tokensSold += tokensToMint;
-        totalEthRaised += ethAfterFee;
+        totalMonRaised += monAfterFee;
         
         _transfer(address(this), msg.sender, tokensToMint);
 
         emit TokensPurchased(msg.sender, msg.value, tokensToMint, getCurrentPrice());
 
-        if (totalEthRaised >= GRADUATION_MARKET_CAP) {
+        if (totalMonRaised >= GRADUATION_MARKET_CAP) {
             _graduate();
         }
     }
 
     /**
-     * @dev Sell tokens for ETH based on the bonding curve.
+     * @dev Sell tokens for MON based on the bonding curve.
      * @param tokenAmount Amount of tokens to sell.
-     * @param minEthOut Slippage protection.
+     * @param minMonOut Slippage protection.
      */
-    function sell(uint256 tokenAmount, uint256 /* minEthOut */) external nonReentrant whenNotPaused {
+    function sell(uint256 tokenAmount, uint256 minMonOut) external nonReentrant whenNotPaused {
         require(!graduated, "Token already graduated");
         require(tokenAmount > 0, "Must sell more than 0");
         require(balanceOf(msg.sender) >= tokenAmount, "Insufficient balance");
 
-        uint256 ethToReturn = calculateEthForTokens(tokenAmount);
-        uint256 fee = (ethToReturn * FEE_PERCENT) / 100;
-        uint256 ethAfterFee = ethToReturn - fee;
+        uint256 monToReturn = calculateMonForTokens(tokenAmount);
+        uint256 fee = (monToReturn * FEE_PERCENT) / 100;
+        uint256 monAfterFee = monToReturn - fee;
+        require(monAfterFee >= minMonOut, "Slippage too high");
 
-        require(address(this).balance >= ethAfterFee, "Insufficient contract balance");
+        require(address(this).balance >= monAfterFee, "Insufficient contract balance");
 
         tokensSold -= tokenAmount;
-        totalEthRaised -= ethToReturn;
-
+        totalMonRaised -= monToReturn;
         _transfer(msg.sender, address(this), tokenAmount);
         
         // Transfer fee to treasury
         (bool feeSuccess, ) = platformTreasury.call{value: fee}("");
         require(feeSuccess, "Fee transfer failed");
 
-        (bool success, ) = msg.sender.call{value: ethAfterFee}("");
-        require(success, "ETH transfer failed");
+        (bool success, ) = msg.sender.call{value: monAfterFee}("");
+        require(success, "MON transfer failed");
 
-        emit TokensSold(msg.sender, tokenAmount, ethAfterFee, getCurrentPrice());
+        emit TokensSold(msg.sender, tokenAmount, monAfterFee, getCurrentPrice());
     }
 
     /**
@@ -123,22 +123,22 @@ contract MemeToken is ERC20, ReentrancyGuard, Pausable, Ownable {
     }
 
     /**
-     * @dev Calculate how many tokens for a given amount of ETH.
+     * @dev Calculate how many tokens for a given amount of MON.
      * Approximation using the integral formula.
      */
-    function calculateTokensForEth(uint256 ethAmount) public view returns (uint256) {
+    function calculateTokensForMon(uint256 monAmount) public view returns (uint256) {
         // This is a simplification for the demo. 
         // In a real production app, we would solve the integral cubic equation.
         // For this launchpad, we use a step-wise approximation or iterative approach.
         // Let's use a simple linear approximation for this implementation to keep it gas-efficient.
         uint256 currentPrice = getCurrentPrice();
-        return (ethAmount * 1e18) / currentPrice;
+        return (monAmount * 1e18) / currentPrice;
     }
 
     /**
-     * @dev Calculate how much ETH for a given amount of tokens.
+     * @dev Calculate how much MON for a given amount of tokens.
      */
-    function calculateEthForTokens(uint256 tokenAmount) public view returns (uint256) {
+    function calculateMonForTokens(uint256 tokenAmount) public view returns (uint256) {
         uint256 currentPrice = getCurrentPrice();
         return (tokenAmount * currentPrice) / 1e18;
     }

@@ -11,6 +11,8 @@ export const MONAD_TESTNET_CONFIG = {
   nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 },
 };
 
+export const FACTORY_ADDRESS = (import.meta.env.VITE_FACTORY_ADDRESS as `0x${string}`) || '0x4ab9E4c57Ce51184F4DC5Ba36BdbBaD749Cf88eE';
+
 export const ROUTES = {
   HOME: '/',
   TOKEN_DETAIL: '/token/:address',

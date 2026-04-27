@@ -13,8 +13,8 @@ const FACTORY_ABI = [
 ];
 
 const TOKEN_ABI = [
-  "event TokensPurchased(address indexed buyer, uint256 ethIn, uint256 tokensOut, uint256 newPrice)",
-  "event TokensSold(address indexed seller, uint256 tokensIn, uint256 ethOut, uint256 newPrice)",
+  "event TokensPurchased(address indexed buyer, uint256 monIn, uint256 tokensOut, uint256 newPrice)",
+  "event TokensSold(address indexed seller, uint256 tokensIn, uint256 monOut, uint256 newPrice)",
   "event Graduated(address indexed tokenAddress, address uniswapPool)"
 ];
 
@@ -65,10 +65,10 @@ export async function startIndexer() {
 async function indexTokenEvents(tokenAddress: string) {
   const tokenContract = new ethers.Contract(tokenAddress, TOKEN_ABI, provider);
 
-  tokenContract.on("TokensPurchased", async (buyer, ethIn, tokensOut, newPrice, event) => {
-    console.log(`Purchase: ${tokensOut} tokens for ${ethIn} ETH`);
+  tokenContract.on("TokensPurchased", async (buyer, monIn, tokensOut, newPrice, event) => {
+    console.log(`Purchase: ${tokensOut} tokens for ${monIn} MON`);
     
-    const ethAmount = parseFloat(ethers.formatEther(ethIn));
+    const monAmount = parseFloat(ethers.formatEther(monIn));
     const tokenAmount = parseFloat(ethers.formatEther(tokensOut));
     const price = parseFloat(ethers.formatEther(newPrice));
 
@@ -79,7 +79,7 @@ async function indexTokenEvents(tokenAddress: string) {
             tokenAddress,
             traderAddress: buyer,
             type: 'buy',
-            ethAmount,
+            ethAmount: monAmount,
             tokenAmount,
             priceAtTrade: price,
             txHash: event.log.transactionHash,
@@ -105,10 +105,10 @@ async function indexTokenEvents(tokenAddress: string) {
     }
   });
 
-  tokenContract.on("TokensSold", async (seller, tokensIn, ethOut, newPrice, event) => {
-    console.log(`Sale: ${tokensIn} tokens for ${ethOut} ETH`);
+  tokenContract.on("TokensSold", async (seller, tokensIn, monOut, newPrice, event) => {
+    console.log(`Sale: ${tokensIn} tokens for ${monOut} MON`);
     
-    const ethAmount = parseFloat(ethers.formatEther(ethOut));
+    const monAmount = parseFloat(ethers.formatEther(monOut));
     const tokenAmount = parseFloat(ethers.formatEther(tokensIn));
     const price = parseFloat(ethers.formatEther(newPrice));
 
@@ -119,7 +119,7 @@ async function indexTokenEvents(tokenAddress: string) {
             tokenAddress,
             traderAddress: seller,
             type: 'sell',
-            ethAmount,
+            ethAmount: monAmount,
             tokenAmount,
             priceAtTrade: price,
             txHash: event.log.transactionHash,

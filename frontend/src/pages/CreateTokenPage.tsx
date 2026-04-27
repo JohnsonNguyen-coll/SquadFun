@@ -3,10 +3,15 @@ import PreviewCard from '@/components/create/PreviewCard';
 import GlowButton from '@/components/shared/GlowButton';
 import confetti from 'canvas-confetti';
 import { supabase } from '@/config/supabase';
-import { useAccount } from 'wagmi';
+import { useAccount, useWriteContract } from 'wagmi';
+import { parseEther, parseAbi } from 'viem';
+import { FACTORY_ADDRESS } from '@/config/constants';
+import { useNavigate } from 'react-router-dom';
 
 const CreateTokenPage: React.FC = () => {
   const { address } = useAccount();
+  const navigate = useNavigate();
+  const { writeContractAsync } = useWriteContract();
   const [isCasting, setIsCasting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
@@ -51,10 +56,26 @@ const CreateTokenPage: React.FC = () => {
       alert('Please upload an image for your spell!');
       return;
     }
-    setIsCasting(true);
+    if (!address) {
+      alert('Please connect your wallet first!');
+      return;
+    }
 
-    // Simulate Monad's fast finality
-    setTimeout(() => {
+    try {
+      setIsCasting(true);
+
+      const hash = await writeContractAsync({
+        address: FACTORY_ADDRESS as `0x${string}`,
+        abi: parseAbi([
+          "function createToken(string name, string symbol, string description, string imageUrl) payable returns (address)"
+        ]),
+        functionName: 'createToken',
+        args: [formData.name, formData.symbol, formData.description, formData.imageUrl],
+        value: parseEther('0.001'),
+      } as any);
+
+      console.log('Transaction hash:', hash);
+
       confetti({
         particleCount: 150,
         spread: 70,
@@ -62,9 +83,14 @@ const CreateTokenPage: React.FC = () => {
         colors: ['#8B5CF6', '#A78BFA', '#7C3AED', '#ffffff']
       });
 
+      alert('Spell cast successfully! Your token is being created on Monad.');
+      navigate('/');
+    } catch (error) {
+      console.error('Error creating token:', error);
+      alert('Failed to cast spell. Check console for details.');
+    } finally {
       setIsCasting(false);
-      // In real app, we'd navigate to the new token page
-    }, 2000);
+    }
   };
 
   return (

@@ -6,7 +6,7 @@ import type { TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog, Typed
   
 
   export interface MemeTokenInterface extends Interface {
-    getFunction(nameOrSignature: "BASE_PRICE" | "FEE_PERCENT" | "GRADUATION_MARKET_CAP" | "MAX_BUY_PERCENT" | "TOTAL_SUPPLY" | "allowance" | "approve" | "balanceOf" | "buy" | "calculateEthForTokens" | "calculateTokensForEth" | "createdAt" | "creator" | "decimals" | "description" | "getCurrentPrice" | "graduated" | "imageUrl" | "name" | "owner" | "pause" | "paused" | "platformTreasury" | "renounceOwnership" | "sell" | "symbol" | "tokensSold" | "totalEthRaised" | "totalSupply" | "transfer" | "transferFrom" | "transferOwnership" | "unpause"): FunctionFragment;
+    getFunction(nameOrSignature: "BASE_PRICE" | "FEE_PERCENT" | "GRADUATION_MARKET_CAP" | "MAX_BUY_PERCENT" | "TOTAL_SUPPLY" | "allowance" | "approve" | "balanceOf" | "buy" | "calculateMonForTokens" | "calculateTokensForMon" | "createdAt" | "creator" | "decimals" | "description" | "getCurrentPrice" | "graduated" | "imageUrl" | "name" | "owner" | "pause" | "paused" | "platformTreasury" | "renounceOwnership" | "sell" | "symbol" | "tokensSold" | "totalMonRaised" | "totalSupply" | "transfer" | "transferFrom" | "transferOwnership" | "unpause"): FunctionFragment;
 
     getEvent(nameOrSignatureOrTopic: "Approval" | "Graduated" | "OwnershipTransferred" | "Paused" | "TokensPurchased" | "TokensSold" | "Transfer" | "Unpaused"): EventFragment;
 
@@ -19,8 +19,8 @@ encodeFunctionData(functionFragment: 'allowance', values: [AddressLike, AddressL
 encodeFunctionData(functionFragment: 'approve', values: [AddressLike, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'balanceOf', values: [AddressLike]): string;
 encodeFunctionData(functionFragment: 'buy', values: [BigNumberish]): string;
-encodeFunctionData(functionFragment: 'calculateEthForTokens', values: [BigNumberish]): string;
-encodeFunctionData(functionFragment: 'calculateTokensForEth', values: [BigNumberish]): string;
+encodeFunctionData(functionFragment: 'calculateMonForTokens', values: [BigNumberish]): string;
+encodeFunctionData(functionFragment: 'calculateTokensForMon', values: [BigNumberish]): string;
 encodeFunctionData(functionFragment: 'createdAt', values?: undefined): string;
 encodeFunctionData(functionFragment: 'creator', values?: undefined): string;
 encodeFunctionData(functionFragment: 'decimals', values?: undefined): string;
@@ -37,7 +37,7 @@ encodeFunctionData(functionFragment: 'renounceOwnership', values?: undefined): s
 encodeFunctionData(functionFragment: 'sell', values: [BigNumberish, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'symbol', values?: undefined): string;
 encodeFunctionData(functionFragment: 'tokensSold', values?: undefined): string;
-encodeFunctionData(functionFragment: 'totalEthRaised', values?: undefined): string;
+encodeFunctionData(functionFragment: 'totalMonRaised', values?: undefined): string;
 encodeFunctionData(functionFragment: 'totalSupply', values?: undefined): string;
 encodeFunctionData(functionFragment: 'transfer', values: [AddressLike, BigNumberish]): string;
 encodeFunctionData(functionFragment: 'transferFrom', values: [AddressLike, AddressLike, BigNumberish]): string;
@@ -53,8 +53,8 @@ decodeFunctionResult(functionFragment: 'allowance', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'approve', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'balanceOf', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'buy', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'calculateEthForTokens', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'calculateTokensForEth', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'calculateMonForTokens', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'calculateTokensForMon', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'createdAt', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'creator', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'decimals', data: BytesLike): Result;
@@ -71,7 +71,7 @@ decodeFunctionResult(functionFragment: 'renounceOwnership', data: BytesLike): Re
 decodeFunctionResult(functionFragment: 'sell', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'symbol', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'tokensSold', data: BytesLike): Result;
-decodeFunctionResult(functionFragment: 'totalEthRaised', data: BytesLike): Result;
+decodeFunctionResult(functionFragment: 'totalMonRaised', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'totalSupply', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'transfer', data: BytesLike): Result;
 decodeFunctionResult(functionFragment: 'transferFrom', data: BytesLike): Result;
@@ -129,9 +129,9 @@ decodeFunctionResult(functionFragment: 'unpause', data: BytesLike): Result;
   
 
     export namespace TokensPurchasedEvent {
-      export type InputTuple = [buyer: AddressLike, ethIn: BigNumberish, tokensOut: BigNumberish, newPrice: BigNumberish];
-      export type OutputTuple = [buyer: string, ethIn: bigint, tokensOut: bigint, newPrice: bigint];
-      export interface OutputObject {buyer: string, ethIn: bigint, tokensOut: bigint, newPrice: bigint };
+      export type InputTuple = [buyer: AddressLike, monIn: BigNumberish, tokensOut: BigNumberish, newPrice: BigNumberish];
+      export type OutputTuple = [buyer: string, monIn: bigint, tokensOut: bigint, newPrice: bigint];
+      export interface OutputObject {buyer: string, monIn: bigint, tokensOut: bigint, newPrice: bigint };
       export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>
       export type Filter = TypedDeferredTopicFilter<Event>
       export type Log = TypedEventLog<Event>
@@ -141,9 +141,9 @@ decodeFunctionResult(functionFragment: 'unpause', data: BytesLike): Result;
   
 
     export namespace TokensSoldEvent {
-      export type InputTuple = [seller: AddressLike, tokensIn: BigNumberish, ethOut: BigNumberish, newPrice: BigNumberish];
-      export type OutputTuple = [seller: string, tokensIn: bigint, ethOut: bigint, newPrice: bigint];
-      export interface OutputObject {seller: string, tokensIn: bigint, ethOut: bigint, newPrice: bigint };
+      export type InputTuple = [seller: AddressLike, tokensIn: BigNumberish, monOut: BigNumberish, newPrice: BigNumberish];
+      export type OutputTuple = [seller: string, tokensIn: bigint, monOut: bigint, newPrice: bigint];
+      export interface OutputObject {seller: string, tokensIn: bigint, monOut: bigint, newPrice: bigint };
       export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>
       export type Filter = TypedDeferredTopicFilter<Event>
       export type Log = TypedEventLog<Event>
@@ -282,7 +282,7 @@ decodeFunctionResult(functionFragment: 'unpause', data: BytesLike): Result;
     
 
     
-    calculateEthForTokens: TypedContractMethod<
+    calculateMonForTokens: TypedContractMethod<
       [tokenAmount: BigNumberish, ],
       [bigint],
       'view'
@@ -290,8 +290,8 @@ decodeFunctionResult(functionFragment: 'unpause', data: BytesLike): Result;
     
 
     
-    calculateTokensForEth: TypedContractMethod<
-      [ethAmount: BigNumberish, ],
+    calculateTokensForMon: TypedContractMethod<
+      [monAmount: BigNumberish, ],
       [bigint],
       'view'
     >
@@ -403,7 +403,7 @@ decodeFunctionResult(functionFragment: 'unpause', data: BytesLike): Result;
 
     
     sell: TypedContractMethod<
-      [tokenAmount: BigNumberish, minEthOut: BigNumberish, ],
+      [tokenAmount: BigNumberish, minMonOut: BigNumberish, ],
       [void],
       'nonpayable'
     >
@@ -426,7 +426,7 @@ decodeFunctionResult(functionFragment: 'unpause', data: BytesLike): Result;
     
 
     
-    totalEthRaised: TypedContractMethod<
+    totalMonRaised: TypedContractMethod<
       [],
       [bigint],
       'view'
@@ -521,13 +521,13 @@ getFunction(nameOrSignature: 'buy'): TypedContractMethod<
       [void],
       'payable'
     >;
-getFunction(nameOrSignature: 'calculateEthForTokens'): TypedContractMethod<
+getFunction(nameOrSignature: 'calculateMonForTokens'): TypedContractMethod<
       [tokenAmount: BigNumberish, ],
       [bigint],
       'view'
     >;
-getFunction(nameOrSignature: 'calculateTokensForEth'): TypedContractMethod<
-      [ethAmount: BigNumberish, ],
+getFunction(nameOrSignature: 'calculateTokensForMon'): TypedContractMethod<
+      [monAmount: BigNumberish, ],
       [bigint],
       'view'
     >;
@@ -597,7 +597,7 @@ getFunction(nameOrSignature: 'renounceOwnership'): TypedContractMethod<
       'nonpayable'
     >;
 getFunction(nameOrSignature: 'sell'): TypedContractMethod<
-      [tokenAmount: BigNumberish, minEthOut: BigNumberish, ],
+      [tokenAmount: BigNumberish, minMonOut: BigNumberish, ],
       [void],
       'nonpayable'
     >;
@@ -611,7 +611,7 @@ getFunction(nameOrSignature: 'tokensSold'): TypedContractMethod<
       [bigint],
       'view'
     >;
-getFunction(nameOrSignature: 'totalEthRaised'): TypedContractMethod<
+getFunction(nameOrSignature: 'totalMonRaised'): TypedContractMethod<
       [],
       [bigint],
       'view'
