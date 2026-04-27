@@ -12,10 +12,10 @@ interface TabFilterProps {
 
 const TabFilter: React.FC<TabFilterProps> = ({ activeTab, setActiveTab }) => {
   const tabs = [
-    { id: 'all', label: 'Trending', icon: '🔥' },
-    { id: 'new', label: 'Newest', icon: '🆕' },
-    { id: 'graduated', label: 'Graduated', icon: '🎓' },
-    { id: 'following', label: 'Following', icon: '⭐' },
+    { id: 'all', label: 'Trending' },
+    { id: 'new', label: 'Newest' },
+    { id: 'graduated', label: 'Graduated' },
+    { id: 'following', label: 'Following' },
   ];
 
   const handleTabClick = (tabId: string) => {
@@ -25,8 +25,8 @@ const TabFilter: React.FC<TabFilterProps> = ({ activeTab, setActiveTab }) => {
 
   useGSAP(() => {
     const state = Flip.getState('.tab-bg');
-    Flip.from(state, { 
-      duration: 0.3, 
+    Flip.from(state, {
+      duration: 0.3,
       ease: 'power2.out',
       absolute: true
     });
@@ -40,14 +40,12 @@ const TabFilter: React.FC<TabFilterProps> = ({ activeTab, setActiveTab }) => {
           <button
             key={tab.id}
             onClick={() => handleTabClick(tab.id)}
-            className={`relative px-5 py-2.5 rounded-xl flex items-center gap-2 transition-colors duration-300 ${
-              isActive ? 'text-white' : 'text-white/40 hover:text-white/60'
-            }`}
+            className={`relative px-5 py-2.5 rounded-xl flex items-center gap-2 transition-colors duration-300 ${isActive ? 'text-white' : 'text-white/40 hover:text-white/60'
+              }`}
           >
             {isActive && (
               <div className="tab-bg absolute inset-0 bg-primary/20 border border-primary/50 rounded-xl" />
             )}
-            <span className="text-xs">{tab.icon}</span>
             <span className="text-sm font-body font-semibold uppercase tracking-[0.06em] leading-none">
               {tab.label}
             </span>

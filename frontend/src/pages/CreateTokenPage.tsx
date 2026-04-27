@@ -61,7 +61,7 @@ const CreateTokenPage: React.FC = () => {
         origin: { y: 0.6 },
         colors: ['#8B5CF6', '#A78BFA', '#7C3AED', '#ffffff']
       });
-      
+
       setIsCasting(false);
       // In real app, we'd navigate to the new token page
     }, 2000);
@@ -105,8 +105,8 @@ const CreateTokenPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2">
                 <label className="block text-[10px] uppercase tracking-[0.12em] font-semibold text-white/30 ml-1">Token Name</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -116,8 +116,8 @@ const CreateTokenPage: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <label className="block text-[10px] uppercase tracking-[0.12em] font-semibold text-white/30 ml-1">Ticker Symbol</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   required
                   value={formData.symbol}
                   onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
@@ -129,7 +129,7 @@ const CreateTokenPage: React.FC = () => {
 
             <div className="space-y-2">
               <label className="block text-[10px] uppercase tracking-[0.12em] font-semibold text-white/30 ml-1">Lore (Description)</label>
-              <textarea 
+              <textarea
                 required
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -145,15 +145,14 @@ const CreateTokenPage: React.FC = () => {
                   <img src={formData.imageUrl} className="w-full h-full object-cover" />
                 ) : (
                   <div className="text-center">
-                    <div className="text-4xl mb-3">🖼️</div>
                     <div className="text-[10px] uppercase tracking-widest font-bold text-white/20 group-hover:text-primary/60">
                       {uploading ? 'Uploading Spell...' : 'Choose Meme Image'}
                     </div>
                   </div>
                 )}
-                <input 
-                  type="file" 
-                  className="absolute inset-0 opacity-0 cursor-pointer" 
+                <input
+                  type="file"
+                  className="absolute inset-0 opacity-0 cursor-pointer"
                   accept="image/*"
                   onChange={handleFileUpload}
                   disabled={uploading}
@@ -188,11 +187,11 @@ const CreateTokenPage: React.FC = () => {
             <span className="text-[10px] uppercase tracking-[0.14em] font-semibold text-primary-highlight">Live Preview</span>
           </div>
           <PreviewCard formData={formData} />
-          
+
           <div className="mt-12 p-6 glass-card border-white/10 bg-surface/35 text-center">
             <div className="text-xs text-white/20 font-body leading-relaxed">
               <span className="text-monad-highlight font-bold">PRO TIP:</span> <br />
-              Memecoins with great lore and distinct visuals <br /> 
+              Memecoins with great lore and distinct visuals <br />
               reach graduation 420% faster.
             </div>
           </div>

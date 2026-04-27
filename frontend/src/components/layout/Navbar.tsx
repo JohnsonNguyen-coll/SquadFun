@@ -25,7 +25,7 @@ const Navbar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3 group">
           <img src={logo} alt="SquadFun" className="w-10 h-10 object-contain group-hover:scale-110 transition-transform" />
-          <span className="text-2xl font-body font-black tracking-normal text-white">
+          <span className="text-2xl font-body font-black tracking-normal text-white relative top-[2px]">
             SquadFun
           </span>
         </Link>
