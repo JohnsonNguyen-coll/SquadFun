@@ -43,16 +43,63 @@ const TokenDetailPage: React.FC = () => {
     fetchData();
 
     if (address) {
-      socket.emit('subscribe', address);
+      const lowerAddress = address.toLowerCase();
       
-      socket.on('trade_update', (data) => {
-        console.log('Real-time trade update:', data);
-        fetchData();
-      });
+      const handleConnect = () => {
+        console.log('Socket connected/reconnected, subscribing to:', lowerAddress);
+        socket.emit('subscribe', lowerAddress);
+      };
+
+      // Subscribe immediately if already connected
+      if (socket.connected) handleConnect();
+      
+      socket.on('connect', handleConnect);
+      
+      const tradeUpdateHandler = (data: any) => {
+        if (data.tokenAddress.toLowerCase() === lowerAddress) {
+          console.log('✅ Real-time trade update received:', data);
+          
+          // Prepend new trade for instant feedback
+          const newTrade = {
+            id: `temp-${Date.now()}`,
+            type: data.type,
+            ethAmount: data.monAmount, 
+            tokenAmount: data.tokenAmount,
+            priceAtTrade: data.price,
+            traderAddress: data.traderAddress || 'Just now',
+            timestamp: new Date().toISOString(),
+          };
+
+          setTrades(prev => [newTrade as any, ...prev]);
+
+          setToken(prev => {
+            if (!prev) return prev;
+            const newPrice = Number(data.price);
+            return {
+              ...prev,
+              price: newPrice,
+              circulatingSupply: data.type === 'buy' 
+                ? prev.circulatingSupply + parseEther(data.tokenAmount)
+                : prev.circulatingSupply - parseEther(data.tokenAmount),
+              reserveMon: data.type === 'buy'
+                ? prev.reserveMon + parseEther(data.monAmount)
+                : prev.reserveMon - parseEther(data.monAmount),
+              marketCap: newPrice * 1_000_000_000
+            };
+          });
+
+          setTimeout(() => {
+            fetchData();
+          }, 1000);
+        }
+      };
+
+      socket.on('trade_update', tradeUpdateHandler);
 
       return () => {
-        socket.emit('unsubscribe', address);
-        socket.off('trade_update');
+        socket.off('connect', handleConnect);
+        socket.emit('unsubscribe', lowerAddress);
+        socket.off('trade_update', tradeUpdateHandler);
       };
     }
   }, [address]);
@@ -324,7 +371,7 @@ const TokenDetailPage: React.FC = () => {
 
         {/* Right Column - Trade Widget & Progress */}
         <div className="lg:col-span-4 space-y-8">
-          <TradeWidget token={token} />
+          <TradeWidget token={token} onTradeSuccess={fetchData} />
           <div className="glass-card p-6">
             <BondingCurveBar progress={graduationProgress} />
           </div>

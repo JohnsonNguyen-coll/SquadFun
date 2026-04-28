@@ -1,20 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  ResponsiveContainer, 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  CartesianGrid 
-} from 'recharts';
+import React, { useEffect, useRef, useState } from 'react';
+import { createChart, ColorType } from 'lightweight-charts';
+import type { ISeriesApi, CandlestickData, Time } from 'lightweight-charts';
 import { API_BASE_URL } from '@/config/constants';
 import { socket } from '@/socket';
-
-interface PricePoint {
-  time: string;
-  price: number;
-}
 
 interface PriceChartProps {
   tokenAddress: string;
@@ -22,21 +10,36 @@ interface PriceChartProps {
 }
 
 const PriceChart: React.FC<PriceChartProps> = ({ tokenAddress, currentPrice }) => {
-  const [data, setData] = useState<PricePoint[]>([]);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<any>(null);
+  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState('1h');
+  const [priceChange, setPriceChange] = useState(0);
 
   const fetchChartData = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/tokens/${tokenAddress}/chart?timeframe=${timeframe}`);
       const candles = await response.json();
       
-      const chartPoints = candles.map((c: any) => ({
-        time: new Date(c.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        price: c.close
+      const formattedData: CandlestickData[] = candles.map((c: any) => ({
+        time: (c.time / 1000) as Time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
       }));
-      
-      setData(chartPoints);
+
+      if (seriesRef.current) {
+        seriesRef.current.setData(formattedData);
+        
+        if (formattedData.length > 1) {
+          const first = formattedData[0].close;
+          const last = formattedData[formattedData.length - 1].close;
+          setPriceChange(((last - first) / first) * 100);
+        }
+      }
     } catch (error) {
       console.error('Error fetching chart data:', error);
     } finally {
@@ -45,31 +48,97 @@ const PriceChart: React.FC<PriceChartProps> = ({ tokenAddress, currentPrice }) =
   };
 
   useEffect(() => {
-    fetchChartData();
-    
-    socket.on('trade_update', (update) => {
-      if (update.tokenAddress === tokenAddress) {
-        fetchChartData();
-      }
+    if (!chartContainerRef.current) return;
+
+    const chart = createChart(chartContainerRef.current, {
+      layout: {
+        background: { type: ColorType.Solid, color: 'transparent' },
+        textColor: '#ffffff40',
+      },
+      grid: {
+        vertLines: { color: '#ffffff05' },
+        horzLines: { color: '#ffffff05' },
+      },
+      width: chartContainerRef.current.clientWidth,
+      height: 300,
+      timeScale: {
+        borderVisible: false,
+        timeVisible: true,
+        secondsVisible: false,
+      },
+      rightPriceScale: {
+        borderVisible: false,
+      },
     });
 
+    const candlestickSeries = chart.addCandlestickSeries({
+      upColor: '#10b981',
+      downColor: '#f43f5e',
+      borderVisible: false,
+      wickUpColor: '#10b981',
+      wickDownColor: '#f43f5e',
+    });
+
+    chartRef.current = chart;
+    seriesRef.current = candlestickSeries;
+
+    fetchChartData();
+
+    const handleResize = () => {
+      if (chartContainerRef.current) {
+        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+ 
+    const handleConnect = () => {
+      socket.emit('subscribe', tokenAddress.toLowerCase());
+    };
+
+    if (socket.connected) handleConnect();
+    socket.on('connect', handleConnect);
+
+    const tradeUpdateHandler = (update: any) => {
+      if (update.tokenAddress.toLowerCase() === tokenAddress.toLowerCase()) {
+        const price = Number(update.price);
+        const time = Math.floor(Date.now() / 1000) as Time;
+        
+        if (seriesRef.current) {
+          // Update the current candle with the new price
+          seriesRef.current.update({
+            time: time,
+            open: price, 
+            high: price,
+            low: price,
+            close: price,
+          });
+        }
+        
+        // Also refresh the full chart data after a short delay to get the proper OHLC buckets
+        setTimeout(fetchChartData, 2000);
+      }
+    };
+
+    socket.on('trade_update', tradeUpdateHandler);
+
     return () => {
-      socket.off('trade_update');
+      window.removeEventListener('resize', handleResize);
+      chart.remove();
+      socket.off('connect', handleConnect);
+      socket.off('trade_update', tradeUpdateHandler);
+      socket.emit('unsubscribe', tokenAddress.toLowerCase());
     };
   }, [tokenAddress, timeframe]);
 
-  const priceChange = data.length > 1 
-    ? ((data[data.length - 1].price - data[0].price) / data[0].price) * 100 
-    : 0;
-
   return (
-    <div className="h-[400px] w-full p-4 glass-card relative overflow-hidden">
+    <div className="p-4 glass-card relative overflow-hidden">
       <div className="flex items-center justify-between mb-6 px-2 relative z-10">
         <div>
-          <h3 className="text-sm font-body font-extrabold uppercase tracking-[0.1em] text-white/40">Price Performance</h3>
+          <h3 className="text-sm font-body font-extrabold uppercase tracking-[0.1em] text-white/40">Market Performance</h3>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-mono font-bold">
-              {currentPrice ? currentPrice.toFixed(10) : (data.length > 0 ? data[data.length - 1].price.toFixed(10) : '0.000000')} ◈
+              {currentPrice ? Number(currentPrice).toFixed(10) : '0.000000'} ◈
             </span>
             <span className={`text-sm font-mono font-bold ${priceChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
               {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
@@ -89,52 +158,11 @@ const PriceChart: React.FC<PriceChartProps> = ({ tokenAddress, currentPrice }) =
         </div>
       </div>
 
-      {loading && data.length === 0 ? (
+      <div ref={chartContainerRef} className="w-full" />
+
+      {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/20 backdrop-blur-sm z-20">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
-        <ResponsiveContainer width="100%" height="80%">
-          <AreaChart data={data}>
-            <defs>
-              <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-            <XAxis 
-              dataKey="time" 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#ffffff20', fontSize: 10, fontFamily: 'JetBrains Mono' }} 
-              minTickGap={30}
-            />
-            <YAxis 
-              hide 
-              domain={['auto', 'auto']}
-            />
-            <Tooltip 
-              contentStyle={{ backgroundColor: '#110D2A', border: '1px solid #8B5CF630', borderRadius: '12px', fontFamily: 'JetBrains Mono' }}
-              itemStyle={{ color: '#C4B5FD' }}
-              labelStyle={{ color: '#ffffff40', fontSize: '10px', marginBottom: '4px' }}
-            />
-            <Area 
-              type="monotone" 
-              dataKey="price" 
-              stroke="#8B5CF6" 
-              strokeWidth={3}
-              fillOpacity={1} 
-              fill="url(#colorPrice)" 
-              animationDuration={1500}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      )}
-      
-      {!loading && data.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <p className="text-white/20 text-sm font-body">No trades recorded yet</p>
         </div>
       )}
     </div>

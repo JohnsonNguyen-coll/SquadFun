@@ -8,3 +8,11 @@ export const socket = io(SOCKET_URL, {
   autoConnect: true,
   reconnection: true,
 });
+
+socket.on('connect', () => {
+  console.log('✅ Connected to Socket.io server:', socket.id);
+});
+
+socket.on('connect_error', (error) => {
+  console.error('❌ Socket.io connection error:', error);
+});

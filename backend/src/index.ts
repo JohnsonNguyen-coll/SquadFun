@@ -8,6 +8,7 @@ import { Server } from 'socket.io';
 import rateLimit from 'express-rate-limit';
 import apiRoutes from './routes/api.js';
 import { startIndexer } from './services/indexer.js';
+import { initSocket } from './services/socketService.js';
 import { connectRedis } from './services/redis.js';
 
 dotenv.config();
@@ -19,12 +20,7 @@ dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: "*", // Adjust for production
-    methods: ["GET", "POST"]
-  }
-});
+initSocket(httpServer);
 
 const PORT = process.env.PORT || 3001;
 
@@ -43,33 +39,6 @@ app.use('/api/', limiter);
 
 // Routes
 app.use('/api', apiRoutes);
-
-// Socket.io logic
-io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-
-  socket.on('subscribe', (address) => {
-    console.log(`Subscribing to ${address}`);
-    socket.join(address);
-  });
-
-  socket.on('unsubscribe', (address) => {
-    console.log(`Unsubscribing from ${address}`);
-    socket.leave(address);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
-  });
-});
-
-// Broadcast function
-export const broadcast = (address: string, type: string, data: any) => {
-  // Emit to specific token room
-  io.to(address).emit(type, data);
-  // Also emit to global feed for ticker/market
-  io.emit('global_update', { address, type, data });
-};
 
 httpServer.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);

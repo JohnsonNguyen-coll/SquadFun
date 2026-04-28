@@ -1,17 +1,11 @@
 import { ethers } from 'ethers';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
-import { broadcast } from '../index.js';
+import { broadcast } from './socketService.js';
 
 dotenv.config();
 
 const prisma = new PrismaClient();
-const provider = new ethers.WebSocketProvider(process.env.MONAD_WS_URL || 'wss://testnet-rpc.monad.xyz/ws');
-
-// ABIs - simplified for the indexer
-const FACTORY_ABI = [
-  "event TokenCreated(address indexed tokenAddress, string name, string symbol, string description, string imageUrl, address creator)"
-];
 
 const TOKEN_ABI = [
   "event TokensPurchased(address indexed buyer, uint256 monIn, uint256 tokensOut, uint256 newPrice)",
@@ -19,161 +13,156 @@ const TOKEN_ABI = [
   "event Graduated(address indexed tokenAddress, address uniswapPool)"
 ];
 
-export async function startIndexer() {
-  console.log('Starting Blockchain Indexer...');
+const FACTORY_ABI = [
+  "event TokenCreated(address indexed tokenAddress, string name, string symbol, string description, string imageUrl, address creator)"
+];
 
-  const factoryAddress = process.env.FACTORY_ADDRESS!;
-  const factoryContract = new ethers.Contract(factoryAddress, FACTORY_ABI, provider);
+const activeListeners = new Set<string>();
 
-  // Listen for new tokens
-  factoryContract.on("TokenCreated", async (tokenAddress, name, symbol, description, imageUrl, creator, event) => {
-    console.log(`New Token Created: ${name} at ${tokenAddress}`);
-    
-    try {
-      await prisma.token.create({
-        data: {
-          contractAddress: tokenAddress,
-          name,
-          symbol,
-          description,
-          imageUrl,
-          creatorAddress: creator,
-          totalSupply: 1000000000, // as per contract
-          circulatingSupply: 0,
-          reserveMon: 0,
-          price: 0,
-          priceChange24h: 0,
-        } as any
-      });
-      
-      // Update creator's count
-      await prisma.user.upsert({
-        where: { walletAddress: creator },
-        update: { totalCreated: { increment: 1 } },
-        create: { walletAddress: creator, totalCreated: 1 }
-      });
+const setupTokenListeners = (tokenAddress: string, symbol: string, provider: ethers.Provider) => {
+  if (activeListeners.has(tokenAddress.toLowerCase())) return;
+  
+  const contract = new ethers.Contract(tokenAddress, TOKEN_ABI, provider);
+  console.log(`  - Listening on: ${symbol} (${tokenAddress})`);
 
-      // Start listening to this new token's events
-      indexTokenEvents(tokenAddress);
-      
-    } catch (error) {
-      console.error('Error indexing TokenCreated:', error);
-    }
-  });
+  // 1. Listen for Purchases
+  contract.on("TokensPurchased", async (buyer, monIn, tokensOut, newPrice, event) => {
+    const monAmountStr = ethers.formatEther(monIn);
+    const tokenAmountStr = ethers.formatUnits(tokensOut, 18);
+    const priceStr = ethers.formatEther(newPrice);
+    const txHash = event.log.transactionHash;
 
-  // Index existing tokens on startup
-  const tokens = await prisma.token.findMany({ where: { graduated: false } });
-  tokens.forEach(token => indexTokenEvents(token.contractAddress));
-}
-
-async function indexTokenEvents(tokenAddress: string) {
-  const tokenContract = new ethers.Contract(tokenAddress, TOKEN_ABI, provider);
-
-  tokenContract.on("TokensPurchased", async (buyer, monIn, tokensOut, newPrice, event) => {
-    console.log(`Purchase: ${tokensOut} tokens for ${monIn} MON`);
-    
-    const monAmount = parseFloat(ethers.formatEther(monIn));
-    const tokenAmount = parseFloat(ethers.formatEther(tokensOut));
-    const price = parseFloat(ethers.formatEther(newPrice));
+    console.log(`\n💰 BUY EVENT: ${tokenAmountStr} ${symbol} bought by ${buyer}`);
 
     try {
       await prisma.$transaction([
         prisma.trade.create({
           data: {
-            tokenAddress,
+            tokenAddress: tokenAddress,
             traderAddress: buyer,
             type: 'buy',
-            ethAmount: monAmount,
-            tokenAmount,
-            priceAtTrade: price,
-            txHash: event.log.transactionHash,
+            ethAmount: monAmountStr,
+            tokenAmount: tokenAmountStr,
+            priceAtTrade: priceStr,
+            txHash: txHash,
+            timestamp: new Date()
           }
         }),
         prisma.token.update({
           where: { contractAddress: tokenAddress },
           data: {
-            circulatingSupply: { increment: tokenAmount },
-            price: price,
-            reserveMon: { increment: monAmount },
-            marketCap: price * 1000000000, // price * totalSupply
+            price: priceStr,
+            circulatingSupply: { increment: tokenAmountStr },
+            reserveMon: { increment: monAmountStr },
+            marketCap: (Number(priceStr) * 1_000_000_000).toString()
           } as any
-        }),
-        prisma.user.upsert({
-          where: { walletAddress: buyer },
-          update: { totalTraded: { increment: 1 } },
-          create: { walletAddress: buyer, totalTraded: 1 }
         })
       ]);
-      
-      // Notify via WebSocket
+
+      console.log(`✅ Indexed Buy for ${symbol}. Broadcasting...`);
       broadcast(tokenAddress, 'trade_update', {
-        tokenAddress,
+        tokenAddress: tokenAddress.toLowerCase(),
         type: 'buy',
-        price,
-        monAmount,
-        tokenAmount
+        price: priceStr,
+        monAmount: monAmountStr,
+        tokenAmount: tokenAmountStr,
+        traderAddress: buyer // Include trader address!
       });
     } catch (error) {
-      console.error('Error indexing TokensPurchased:', error);
+      console.error(`❌ Error indexing Buy for ${symbol}:`, error);
     }
   });
 
-  tokenContract.on("TokensSold", async (seller, tokensIn, monOut, newPrice, event) => {
-    console.log(`Sale: ${tokensIn} tokens for ${monOut} MON`);
-    
-    const monAmount = parseFloat(ethers.formatEther(monOut));
-    const tokenAmount = parseFloat(ethers.formatEther(tokensIn));
-    const price = parseFloat(ethers.formatEther(newPrice));
+  // 2. Listen for Sales
+  contract.on("TokensSold", async (seller, tokensIn, monOut, newPrice, event) => {
+    const monAmountStr = ethers.formatEther(monOut);
+    const tokenAmountStr = ethers.formatUnits(tokensIn, 18);
+    const priceStr = ethers.formatEther(newPrice);
+    const txHash = event.log.transactionHash;
+
+    console.log(`\n📉 SELL EVENT: ${tokenAmountStr} ${symbol} sold by ${seller}`);
 
     try {
       await prisma.$transaction([
         prisma.trade.create({
           data: {
-            tokenAddress,
+            tokenAddress: tokenAddress,
             traderAddress: seller,
             type: 'sell',
-            ethAmount: monAmount,
-            tokenAmount,
-            priceAtTrade: price,
-            txHash: event.log.transactionHash,
+            ethAmount: monAmountStr,
+            tokenAmount: tokenAmountStr,
+            priceAtTrade: priceStr,
+            txHash: txHash,
+            timestamp: new Date()
           }
         }),
         prisma.token.update({
           where: { contractAddress: tokenAddress },
           data: {
-            circulatingSupply: { decrement: tokenAmount },
-            price: price,
-            reserveMon: { decrement: monAmount },
-            marketCap: price * 1000000000,
+            price: priceStr,
+            circulatingSupply: { decrement: tokenAmountStr },
+            reserveMon: { decrement: monAmountStr },
+            marketCap: (Number(priceStr) * 1_000_000_000).toString()
           } as any
-        }),
+        })
       ]);
 
-      // Notify via WebSocket
+      console.log(`✅ Indexed Sell for ${symbol}. Broadcasting...`);
       broadcast(tokenAddress, 'trade_update', {
-        tokenAddress,
+        tokenAddress: tokenAddress.toLowerCase(),
         type: 'sell',
-        price,
-        monAmount,
-        tokenAmount
+        price: priceStr,
+        monAmount: monAmountStr,
+        tokenAmount: tokenAmountStr,
+        traderAddress: seller // Include trader address!
       });
     } catch (error) {
-      console.error('Error indexing TokensSold:', error);
+      console.error(`❌ Error indexing Sell for ${symbol}:`, error);
     }
   });
 
-  tokenContract.on("Graduated", async (tokenAddress, uniswapPool) => {
-    console.log(`Token Graduated: ${tokenAddress} -> ${uniswapPool}`);
-    try {
-      await prisma.token.update({
-        where: { contractAddress: tokenAddress },
-        data: {
-          graduated: true,
-          uniswapPool
-        }
-      });
-    } catch (error) {
-      console.error('Error indexing Graduated:', error);
+  activeListeners.add(tokenAddress.toLowerCase());
+};
+
+export const startIndexer = async () => {
+  console.log('🚀 Starting Blockchain Indexer...');
+
+  const providerUrl = process.env.MONAD_WS_URL || process.env.RPC_URL || 'https://testnet-rpc.monad.xyz';
+  
+  let provider: ethers.Provider;
+  if (providerUrl.startsWith('wss')) {
+    console.log('🌐 Using WebSocketProvider for indexer');
+    provider = new ethers.WebSocketProvider(providerUrl);
+  } else {
+    console.log('🌐 Using JsonRpcProvider for indexer');
+    provider = new ethers.JsonRpcProvider(providerUrl);
+    (provider as ethers.JsonRpcProvider).pollingInterval = 1000; // Poll every 1 second for faster updates
+  }
+
+  try {
+    // 1. Setup listeners for existing tokens
+    const tokens = await prisma.token.findMany();
+    console.log(`📦 Monitoring ${tokens.length} existing tokens...`);
+    for (const token of tokens) {
+      setupTokenListeners(token.contractAddress, token.symbol, provider);
     }
-  });
-}
+
+    // 2. Setup listener for Factory to pick up NEW tokens
+    const factoryAddress = process.env.FACTORY_ADDRESS;
+    if (factoryAddress) {
+      console.log(`🏭 Listening for new tokens on Factory: ${factoryAddress}`);
+      const factoryContract = new ethers.Contract(factoryAddress, FACTORY_ABI, provider);
+      
+      factoryContract.on("TokenCreated", (tokenAddress, name, symbol, description, imageUrl, creator) => {
+        console.log(`✨ NEW TOKEN DETECTED: ${name} (${symbol}) at ${tokenAddress}`);
+        // Small delay to ensure DB entry is created by the API first if it was created via our app
+        setTimeout(() => {
+          setupTokenListeners(tokenAddress, symbol, provider);
+        }, 2000);
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Failed to start indexer:', error);
+  }
+};

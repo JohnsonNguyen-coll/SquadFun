@@ -1,20 +1,43 @@
 import React, { useState } from 'react';
 import GlowButton from '@/components/shared/GlowButton';
-import { useWriteContract, useAccount, useBalance } from 'wagmi';
-import { parseEther, parseAbi, formatEther } from 'viem';
+import { useWriteContract, useAccount, useBalance, useWaitForTransactionReceipt } from 'wagmi';
+import { parseEther, parseAbi, formatEther, type Hash } from 'viem';
 import type { Token } from '@/mocks/data';
 import confetti from 'canvas-confetti';
 
 interface TradeWidgetProps {
   token: Token;
+  onTradeSuccess?: () => void;
 }
 
-const TradeWidget: React.FC<TradeWidgetProps> = ({ token }) => {
+const TradeWidget: React.FC<TradeWidgetProps> = ({ token, onTradeSuccess }) => {
   const [mode, setMode] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState('');
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pendingTxHash, setPendingTxHash] = useState<Hash | undefined>();
+
+  // Wait for transaction to be mined
+  const { isLoading: isWaitingForTx, isSuccess: isTxConfirmed } = useWaitForTransactionReceipt({
+    hash: pendingTxHash,
+  });
+
+  // Effect to handle success after transaction is mined
+  React.useEffect(() => {
+    if (isTxConfirmed && pendingTxHash) {
+      setAmount('');
+      setPendingTxHash(undefined);
+      if (onTradeSuccess) onTradeSuccess();
+      
+      confetti({
+        particleCount: mode === 'buy' ? 150 : 100,
+        spread: mode === 'buy' ? 70 : 50,
+        origin: { y: 0.6 },
+        colors: mode === 'buy' ? ['#10b981', '#34d399', '#ffffff'] : ['#f43f5e', '#fb7185', '#ffffff']
+      });
+    }
+  }, [isTxConfirmed, pendingTxHash, onTradeSuccess, mode]);
 
   // Get user balance for UI
   const { data: ethBalance } = useBalance({
@@ -26,8 +49,9 @@ const TradeWidget: React.FC<TradeWidgetProps> = ({ token }) => {
     setIsProcessing(true);
 
     try {
+      let hash: Hash;
       if (mode === 'buy') {
-        await writeContractAsync({
+        hash = await writeContractAsync({
           address: token.contractAddress as `0x${string}`,
           abi: parseAbi([
             "function buy(uint256 minTokensOut) external payable"
@@ -36,15 +60,8 @@ const TradeWidget: React.FC<TradeWidgetProps> = ({ token }) => {
           args: [0n], 
           value: parseEther(amount),
         } as any);
-        
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#10b981', '#34d399', '#ffffff']
-        });
       } else {
-        await writeContractAsync({
+        hash = await writeContractAsync({
           address: token.contractAddress as `0x${string}`,
           abi: parseAbi([
             "function sell(uint256 tokenAmount, uint256 minMonOut) external"
@@ -52,15 +69,8 @@ const TradeWidget: React.FC<TradeWidgetProps> = ({ token }) => {
           functionName: 'sell',
           args: [parseEther(amount), 0n],
         } as any);
-        
-        confetti({
-          particleCount: 100,
-          spread: 50,
-          origin: { y: 0.6 },
-          colors: ['#f43f5e', '#fb7185', '#ffffff']
-        });
       }
-      setAmount('');
+      setPendingTxHash(hash);
     } catch (error: any) {
       console.error('Full trade error:', error);
       if (error.message?.includes('rejected')) {
@@ -143,9 +153,9 @@ const TradeWidget: React.FC<TradeWidgetProps> = ({ token }) => {
       <GlowButton 
         variant={mode === 'buy' ? 'emerald' : 'red'} 
         onClick={handleTrade}
-        disabled={isProcessing || !amount}
+        disabled={isProcessing || isWaitingForTx || !amount}
       >
-        {isProcessing ? 'Processing...' : (mode === 'buy' ? 'Cast Buy Spell' : 'Sell Tokens')}
+        {isProcessing || isWaitingForTx ? 'Processing...' : (mode === 'buy' ? 'Cast Buy Spell' : 'Sell Tokens')}
       </GlowButton>
 
       <p className="mt-4 text-center text-[10px] text-white/20 font-body">
