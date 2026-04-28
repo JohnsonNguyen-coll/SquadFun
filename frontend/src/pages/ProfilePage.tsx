@@ -23,6 +23,8 @@ const ProfilePage: React.FC = () => {
   const { address: connectedAddress } = useAccount();
   const [data, setData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activityPage, setActivityPage] = useState(1);
+  const activityPerPage = 5;
   
   // Edit State
   const [isEditing, setIsEditing] = useState(false);
@@ -133,12 +135,12 @@ const ProfilePage: React.FC = () => {
               {data.profile.bio && <p className="text-white/60 mb-4 max-w-md">{data.profile.bio}</p>}
               <div className="flex flex-wrap justify-center md:justify-start gap-4">
                 <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/5 flex items-center gap-2">
-                  <span className="text-[10px] uppercase tracking-[0.12em] text-white/30 font-semibold">Spells Cast</span>
-                  <span className="font-mono font-bold text-white">{data.profile.totalCreated}</span>
+                  <span className="text-[10px] uppercase tracking-[0.12em] text-white/30 font-semibold">Tokens Created</span>
+                  <span className="font-mono font-bold text-white">{Math.max(data.profile.totalCreated, data.tokens.length)}</span>
                 </div>
                 <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/5 flex items-center gap-2">
-                  <span className="text-[10px] uppercase tracking-[0.12em] text-white/30 font-semibold">Giao dịch</span>
-                  <span className="font-mono font-bold text-emerald-400">{data.profile.totalTraded}</span>
+                  <span className="text-[10px] uppercase tracking-[0.12em] text-white/30 font-semibold">Total Trades</span>
+                  <span className="font-mono font-bold text-emerald-400">{Math.max(data.profile.totalTraded, data.trades.length)}</span>
                 </div>
               </div>
             </div>
@@ -170,8 +172,9 @@ const ProfilePage: React.FC = () => {
 
         <div className="space-y-8">
           <h2 className="text-2xl font-body font-extrabold uppercase tracking-[0.1em] text-white/40">Recent Activity</h2>
-          <div className="glass-card p-6 space-y-4">
-            {data.trades.map((trade: any) => (
+          <div className="glass-card p-6 flex flex-col h-[520px]">
+            <div className="space-y-4 flex-1 overflow-y-auto">
+            {data.trades.slice((activityPage - 1) * activityPerPage, activityPage * activityPerPage).map((trade: any) => (
               <div key={trade.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/5">
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${trade.type === 'buy' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
@@ -187,6 +190,29 @@ const ProfilePage: React.FC = () => {
                 </div>
               </div>
             ))}
+            </div>
+
+            {data.trades.length > activityPerPage && (
+              <div className="pt-4 mt-4 border-t border-white/5 flex items-center justify-between">
+                <span className="text-[10px] text-white/40 font-mono">Page {activityPage} / {Math.ceil(data.trades.length / activityPerPage)}</span>
+                <div className="flex gap-2">
+                  <button 
+                    disabled={activityPage === 1}
+                    onClick={() => setActivityPage(p => p - 1)}
+                    className="p-2 rounded-lg bg-white/5 border border-white/5 disabled:opacity-20 hover:bg-white/10 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                  </button>
+                  <button 
+                    disabled={activityPage === Math.ceil(data.trades.length / activityPerPage)}
+                    onClick={() => setActivityPage(p => p + 1)}
+                    className="p-2 rounded-lg bg-white/5 border border-white/5 disabled:opacity-20 hover:bg-white/10 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
