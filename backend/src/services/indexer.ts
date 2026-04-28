@@ -66,7 +66,8 @@ const setupTokenListeners = (tokenAddress: string, symbol: string, provider: eth
         price: priceStr,
         monAmount: monAmountStr,
         tokenAmount: tokenAmountStr,
-        traderAddress: buyer // Include trader address!
+        traderAddress: buyer,
+        txHash: txHash
       });
     } catch (error) {
       console.error(`❌ Error indexing Buy for ${symbol}:`, error);
@@ -114,7 +115,8 @@ const setupTokenListeners = (tokenAddress: string, symbol: string, provider: eth
         price: priceStr,
         monAmount: monAmountStr,
         tokenAmount: tokenAmountStr,
-        traderAddress: seller // Include trader address!
+        traderAddress: seller,
+        txHash: txHash
       });
     } catch (error) {
       console.error(`❌ Error indexing Sell for ${symbol}:`, error);

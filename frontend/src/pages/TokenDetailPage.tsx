@@ -24,7 +24,7 @@ const TokenDetailPage: React.FC = () => {
   const [newMessage, setNewMessage] = useState('');
   const [isSendingComment, setIsSendingComment] = useState(false);
   const [loading, setLoading] = useState(true);
-  
+
   const fetchData = async () => {
     if (!address) return;
     try {
@@ -33,11 +33,11 @@ const TokenDetailPage: React.FC = () => {
         fetch(`${API_BASE_URL}/tokens/${address}/trades`),
         fetch(`${API_BASE_URL}/tokens/${address}/comments`)
       ]);
-      
+
       const tokenData = await tokenRes.json();
       const tradesData = await tradesRes.json();
       const commentsData = await commentsRes.json();
-      
+
       setToken(tokenData);
       setTrades(tradesData);
       setComments(commentsData);
@@ -54,9 +54,9 @@ const TokenDetailPage: React.FC = () => {
     try {
       const content = newMessage.trim();
       const message = `I am commenting on ${address.toLowerCase()}: ${content}`;
-      const signature = await signMessageAsync({ 
-        message, 
-        account: userAddress as `0x${string}` 
+      const signature = await signMessageAsync({
+        message,
+        account: userAddress as `0x${string}`
       });
 
       const response = await fetch(`${API_BASE_URL}/tokens/${address}/comments`, {
@@ -87,7 +87,7 @@ const TokenDetailPage: React.FC = () => {
 
     if (address) {
       const lowerAddress = address.toLowerCase();
-      
+
       const handleConnect = () => {
         console.log('Socket connected/reconnected, subscribing to:', lowerAddress);
         socket.emit('subscribe', lowerAddress);
@@ -95,22 +95,23 @@ const TokenDetailPage: React.FC = () => {
 
       // Subscribe immediately if already connected
       if (socket.connected) handleConnect();
-      
+
       socket.on('connect', handleConnect);
-      
+
       const tradeUpdateHandler = (data: any) => {
         if (data.tokenAddress.toLowerCase() === lowerAddress) {
           console.log('✅ Real-time trade update received:', data);
-          
+
           // Prepend new trade for instant feedback
           const newTrade = {
             id: `temp-${Date.now()}`,
             type: data.type,
-            ethAmount: data.monAmount, 
+            ethAmount: data.monAmount,
             tokenAmount: data.tokenAmount,
             priceAtTrade: data.price,
             traderAddress: data.traderAddress || 'Just now',
             timestamp: new Date().toISOString(),
+            txHash: data.txHash
           };
 
           setTrades(prev => [newTrade as any, ...prev]);
@@ -121,7 +122,7 @@ const TokenDetailPage: React.FC = () => {
             return {
               ...prev,
               price: newPrice,
-              circulatingSupply: data.type === 'buy' 
+              circulatingSupply: data.type === 'buy'
                 ? prev.circulatingSupply + parseEther(data.tokenAmount)
                 : prev.circulatingSupply - parseEther(data.tokenAmount),
               reserveMon: data.type === 'buy'
@@ -177,13 +178,15 @@ const TokenDetailPage: React.FC = () => {
     );
   }
 
-  const graduationProgress = Number((parseEther(token.reserveMon?.toString() || '0') * 100n) / (GRADUATION_TARGET * 10n**18n));
+  const graduationProgress = Number((parseEther(token.reserveMon?.toString() || '0') * 100n) / (GRADUATION_TARGET * 10n ** 18n));
   const recentTrades = trades.map(t => ({
-    wallet: formatAddress(t.traderAddress),
+    wallet: t.traderAddress ? `${t.traderAddress.slice(0, 12)}...${t.traderAddress.slice(-8)}` : 'Unknown',
+    fullWallet: t.traderAddress,
     side: t.type === 'buy' ? 'Buy' : 'Sell',
     amount: formatTokenAmount(t.tokenAmount),
     value: `◈ ${Number(t.ethAmount || 0).toFixed(2)}`,
-    time: timeAgo(t.timestamp)
+    time: timeAgo(t.timestamp),
+    txHash: t.txHash
   }));
   const topHolders: any[] = []; // Would need a separate endpoint if we want real holders
   const tradesPerPage = 4;
@@ -197,7 +200,7 @@ const TokenDetailPage: React.FC = () => {
     <div className="max-w-7xl mx-auto px-6 py-12">
       {/* Back button */}
       <Link to="/" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors mb-12 group">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform"><path d="m15 18-6-6 6-6"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform"><path d="m15 18-6-6 6-6" /></svg>
         <span className="text-sm font-body font-semibold uppercase tracking-[0.08em]">Back to Market</span>
       </Link>
 
@@ -207,9 +210,9 @@ const TokenDetailPage: React.FC = () => {
           {/* Token Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
             <div className="flex items-center gap-6">
-              <img 
-                src={token.imageUrl} 
-                alt={token.name} 
+              <img
+                src={token.imageUrl}
+                alt={token.name}
                 className="w-24 h-24 rounded-2xl ring-4 ring-primary/20 shadow-[0_0_40px_rgba(139,92,246,0.2)]"
               />
               <div>
@@ -245,7 +248,7 @@ const TokenDetailPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="glass-card p-6 space-y-4">
               <h3 className="text-lg font-body font-extrabold tracking-normal mb-4 flex items-center gap-2">
-                <span className="text-primary">📜</span> Token Lore
+                Token Lore
               </h3>
               <p className="text-sm text-white/60 font-body leading-relaxed">
                 {token.description}
@@ -262,7 +265,7 @@ const TokenDetailPage: React.FC = () => {
 
             <div className="glass-card p-6">
               <h3 className="text-lg font-body font-extrabold tracking-normal mb-6 flex items-center gap-2">
-                <span className="text-primary">🧬</span> Distribution
+                Distribution
               </h3>
               <div className="space-y-6">
                 <div>
@@ -271,7 +274,7 @@ const TokenDetailPage: React.FC = () => {
                     <span>{((Number(token.circulatingSupply || 0) / Number(token.totalSupply || 1)) * 100).toFixed(1)}%</span>
                   </div>
                   <div className="h-1.5 w-full bg-background rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-primary-highlight"
                       style={{ width: `${(Number(token.circulatingSupply || 0) / Number(token.totalSupply || 1)) * 100}%` }}
                     />
@@ -283,7 +286,7 @@ const TokenDetailPage: React.FC = () => {
                     <span>{(100 - (Number(token.circulatingSupply || 0) / Number(token.totalSupply || 1)) * 100).toFixed(1)}%</span>
                   </div>
                   <div className="h-1.5 w-full bg-background rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-white/10"
                       style={{ width: `${100 - (Number(token.circulatingSupply || 0) / Number(token.totalSupply || 1)) * 100}%` }}
                     />
@@ -296,7 +299,6 @@ const TokenDetailPage: React.FC = () => {
           <div className="glass-card p-6 h-[420px] flex flex-col">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-body font-extrabold tracking-normal flex items-center gap-2">
-                <span className="text-primary">{activeInsightTab === 'trades' ? '📈' : '🧠'}</span>
                 {activeInsightTab === 'trades' ? 'Recent Trades' : 'Top Holders'}
               </h3>
               <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-1">
@@ -306,11 +308,10 @@ const TokenDetailPage: React.FC = () => {
                     setActiveInsightTab('trades');
                     setTradesPage(1);
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-[0.1em] font-semibold transition-colors ${
-                    activeInsightTab === 'trades'
-                      ? 'bg-primary/25 border border-primary/40 text-primary-highlight'
-                      : 'text-white/45 hover:text-white/75'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-[0.1em] font-semibold transition-colors ${activeInsightTab === 'trades'
+                    ? 'bg-primary/25 border border-primary/40 text-primary-highlight'
+                    : 'text-white/45 hover:text-white/75'
+                    }`}
                 >
                   Recent Trades
                 </button>
@@ -320,11 +321,10 @@ const TokenDetailPage: React.FC = () => {
                     setActiveInsightTab('holders');
                     setHoldersPage(1);
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-[0.1em] font-semibold transition-colors ${
-                    activeInsightTab === 'holders'
-                      ? 'bg-primary/25 border border-primary/40 text-primary-highlight'
-                      : 'text-white/45 hover:text-white/75'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-[0.1em] font-semibold transition-colors ${activeInsightTab === 'holders'
+                    ? 'bg-primary/25 border border-primary/40 text-primary-highlight'
+                    : 'text-white/45 hover:text-white/75'
+                    }`}
                 >
                   Top Holders
                 </button>
@@ -333,28 +333,49 @@ const TokenDetailPage: React.FC = () => {
             {activeInsightTab === 'trades' ? (
               <div className="flex-1 min-h-0 flex flex-col justify-between">
                 <div className="overflow-x-auto overflow-y-auto flex-1">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="text-[10px] uppercase tracking-[0.12em] text-white/35 border-b border-white/10">
-                      <th className="text-left py-3">Wallet</th>
-                      <th className="text-left py-3">Side</th>
-                      <th className="text-left py-3">Amount</th>
-                      <th className="text-left py-3">Value</th>
-                      <th className="text-right py-3">Time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleTrades.map((trade, index) => (
-                      <tr key={`${trade.wallet}-${index}`} className="border-b border-white/5 text-sm">
-                        <td className="py-3 text-white/80 font-mono">{trade.wallet}</td>
-                        <td className={`py-3 font-semibold ${trade.side === 'Buy' ? 'text-emerald-400' : 'text-rose-400'}`}>{trade.side}</td>
-                        <td className="py-3 text-white/70">{trade.amount}</td>
-                        <td className="py-3 text-white/90 font-mono">{trade.value}</td>
-                        <td className="py-3 text-right text-white/45">{trade.time}</td>
+                  <table className="w-full border-collapse table-fixed">
+                    <thead>
+                      <tr className="text-[10px] uppercase tracking-[0.12em] text-white/35 border-b border-white/10">
+                        <th className="text-left py-3 w-auto">Wallet</th>
+                        <th className="text-center py-3 w-20">Side</th>
+                        <th className="text-center py-3 w-24">Amount</th>
+                        <th className="text-center py-3 w-24">Value</th>
+                        <th className="text-center py-3 w-28">Time</th>
+                        <th className="text-center py-3 w-24">Explorer</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {visibleTrades.map((trade, index) => (
+                        <tr key={`${trade.fullWallet}-${index}`} className="border-b border-white/5 text-sm">
+                          <td className="py-3 text-white/80 font-mono text-left">
+                            <Link to={`/profile/${trade.fullWallet}`} className="hover:text-primary transition-colors">
+                              {trade.wallet}
+                            </Link>
+                          </td>
+                          <td className={`py-3 font-semibold ${trade.side === 'Buy' ? 'text-emerald-400' : 'text-rose-400'} w-20 text-center`}>{trade.side}</td>
+                          <td className="py-3 text-white/70 w-24 text-center">{trade.amount}</td>
+                          <td className="py-3 text-white/90 font-mono w-24 text-center">{trade.value}</td>
+                          <td className="py-3 text-center text-white/45 w-28">{trade.time}</td>
+                          <td className="py-3 w-24">
+                            <div className="flex justify-center">
+                              {trade.txHash ? (
+                                <a
+                                  href={`https://testnet.monadexplorer.com/tx/${trade.txHash}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:text-primary-bright transition-colors"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>
+                                </a>
+                              ) : (
+                                <span className="text-white/10 italic text-[10px]">Pending</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
                 <div className="pt-3 mt-3 border-t border-white/10 flex items-center justify-between">
                   <span className="text-[11px] text-white/45">Page {tradesPage}/{totalTradesPages}</span>
@@ -381,18 +402,18 @@ const TokenDetailPage: React.FC = () => {
             ) : (
               <div className="flex-1 min-h-0 flex flex-col justify-between">
                 <div className="space-y-3 overflow-y-auto pr-1 flex-1">
-                {visibleHolders.map((holder, index) => (
-                  <div key={`${holder.wallet}-${index}`} className="rounded-xl border border-white/10 bg-background/35 px-4 py-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-white/70 font-mono">{holder.wallet}</span>
-                      <span className="text-xs text-primary-highlight font-semibold">{holder.share}</span>
+                  {visibleHolders.map((holder, index) => (
+                    <div key={`${holder.wallet}-${index}`} className="rounded-xl border border-white/10 bg-background/35 px-4 py-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-white/70 font-mono">{holder.wallet}</span>
+                        <span className="text-xs text-primary-highlight font-semibold">{holder.share}</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-primary/70" style={{ width: holder.share }} />
+                      </div>
+                      <div className="mt-2 text-[11px] text-white/45">Holding: {holder.amount} {token.symbol}</div>
                     </div>
-                    <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                      <div className="h-full bg-primary/70" style={{ width: holder.share }} />
-                    </div>
-                    <div className="mt-2 text-[11px] text-white/45">Holding: {holder.amount} {token.symbol}</div>
-                  </div>
-                ))}
+                  ))}
                 </div>
                 <div className="pt-3 mt-3 border-t border-white/10 flex items-center justify-between">
                   <span className="text-[11px] text-white/45">Page {holdersPage}/{totalHoldersPages}</span>
@@ -456,7 +477,7 @@ const TokenDetailPage: React.FC = () => {
               )}
             </div>
             <div className="relative mt-auto">
-              <textarea 
+              <textarea
                 placeholder={userAddress ? "Cast your message..." : "Connect wallet to chat..."}
                 disabled={!userAddress || isSendingComment}
                 value={newMessage}
@@ -469,7 +490,7 @@ const TokenDetailPage: React.FC = () => {
                 }}
                 className="w-full bg-background/50 border border-white/5 rounded-xl py-4 px-5 pr-12 text-sm font-body focus:outline-none focus:border-primary/50 min-h-[100px] resize-none disabled:opacity-50 disabled:cursor-not-allowed"
               />
-              <button 
+              <button
                 onClick={handleSendComment}
                 disabled={!userAddress || isSendingComment || !newMessage.trim()}
                 className="absolute bottom-4 right-4 text-primary hover:text-primary-bright transition-colors disabled:opacity-0"
@@ -477,7 +498,7 @@ const TokenDetailPage: React.FC = () => {
                 {isSendingComment ? (
                   <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
                 )}
               </button>
             </div>
