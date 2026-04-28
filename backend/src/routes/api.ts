@@ -11,6 +11,7 @@ router.get('/tokens', tokenController.getTokens);
 router.get('/tokens/:address', tokenController.getTokenDetail);
 router.get('/tokens/:address/trades', tokenController.getTokenTrades);
 router.get('/tokens/:address/chart', tokenController.getChartData);
+router.get('/tokens/:address/holders', tokenController.getTokenHolders);
 
 // Comments
 router.get('/tokens/:address/comments', commentController.getComments);

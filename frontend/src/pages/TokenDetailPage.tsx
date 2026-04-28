@@ -21,6 +21,7 @@ const TokenDetailPage: React.FC = () => {
   const [token, setToken] = useState<Token | null>(null);
   const [trades, setTrades] = useState<any[]>([]);
   const [comments, setComments] = useState<any[]>([]);
+  const [holders, setHolders] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSendingComment, setIsSendingComment] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -28,19 +29,22 @@ const TokenDetailPage: React.FC = () => {
   const fetchData = async () => {
     if (!address) return;
     try {
-      const [tokenRes, tradesRes, commentsRes] = await Promise.all([
+      const [tokenRes, tradesRes, commentsRes, holdersRes] = await Promise.all([
         fetch(`${API_BASE_URL}/tokens/${address}`),
         fetch(`${API_BASE_URL}/tokens/${address}/trades`),
-        fetch(`${API_BASE_URL}/tokens/${address}/comments`)
+        fetch(`${API_BASE_URL}/tokens/${address}/comments`),
+        fetch(`${API_BASE_URL}/tokens/${address}/holders`)
       ]);
 
       const tokenData = await tokenRes.json();
       const tradesData = await tradesRes.json();
       const commentsData = await commentsRes.json();
+      const holdersData = await holdersRes.json();
 
       setToken(tokenData);
       setTrades(tradesData);
       setComments(commentsData);
+      setHolders(holdersData);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -179,6 +183,12 @@ const TokenDetailPage: React.FC = () => {
   }
 
   const graduationProgress = Number((parseEther(token.reserveMon?.toString() || '0') * 100n) / (GRADUATION_TARGET * 10n ** 18n));
+  const topHolders = holders.map(h => ({
+    wallet: h.wallet,
+    formattedWallet: `${h.wallet.slice(0, 12)}...${h.wallet.slice(-8)}`,
+    share: h.share,
+    amount: formatTokenAmount(h.amount)
+  }));
   const recentTrades = trades.map(t => ({
     wallet: t.traderAddress ? `${t.traderAddress.slice(0, 12)}...${t.traderAddress.slice(-8)}` : 'Unknown',
     fullWallet: t.traderAddress,
@@ -188,9 +198,8 @@ const TokenDetailPage: React.FC = () => {
     time: timeAgo(t.timestamp),
     txHash: t.txHash
   }));
-  const topHolders: any[] = []; // Would need a separate endpoint if we want real holders
   const tradesPerPage = 4;
-  const holdersPerPage = 4;
+  const holdersPerPage = 5;
   const totalTradesPages = Math.max(1, Math.ceil(recentTrades.length / tradesPerPage));
   const totalHoldersPages = Math.max(1, Math.ceil(topHolders.length / holdersPerPage));
   const visibleTrades = recentTrades.slice((tradesPage - 1) * tradesPerPage, tradesPage * tradesPerPage);
@@ -405,7 +414,9 @@ const TokenDetailPage: React.FC = () => {
                   {visibleHolders.map((holder, index) => (
                     <div key={`${holder.wallet}-${index}`} className="rounded-xl border border-white/10 bg-background/35 px-4 py-3">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-white/70 font-mono">{holder.wallet}</span>
+                        <Link to={`/profile/${holder.wallet}`} className="text-xs text-white/70 font-mono hover:text-primary transition-colors">
+                          {holder.formattedWallet}
+                        </Link>
                         <span className="text-xs text-primary-highlight font-semibold">{holder.share}</span>
                       </div>
                       <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">

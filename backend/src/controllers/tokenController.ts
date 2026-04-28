@@ -95,3 +95,49 @@ export const getChartData = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch chart data' });
   }
 };
+
+export const getTokenHolders = async (req: Request, res: Response) => {
+  const address = (req.params.address as string).toLowerCase();
+  
+  try {
+    // Fetch all trades for this token to calculate balances
+    const trades = await prisma.trade.findMany({
+      where: { tokenAddress: address },
+    });
+
+    const holderBalances: Record<string, number> = {};
+    
+    trades.forEach(trade => {
+      const amount = Number(trade.tokenAmount);
+      const trader = trade.traderAddress.toLowerCase();
+      
+      if (trade.type === 'buy') {
+        holderBalances[trader] = (holderBalances[trader] || 0) + amount;
+      } else {
+        holderBalances[trader] = (holderBalances[trader] || 0) - amount;
+      }
+    });
+
+    const token = await prisma.token.findUnique({ 
+      where: { contractAddress: address },
+      select: { totalSupply: true }
+    });
+    
+    const totalSupply = Number(token?.totalSupply || 1000000000);
+
+    const holders = Object.entries(holderBalances)
+      .filter(([_, balance]) => balance > 0.01) // Filter out dust balances
+      .map(([walletAddress, balance]) => ({
+        wallet: walletAddress,
+        amount: balance,
+        share: `${((balance / totalSupply) * 100).toFixed(2)}%`
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 50); // Top 50 holders
+
+    res.json(holders);
+  } catch (error) {
+    console.error('Error calculating holders:', error);
+    res.status(500).json({ error: 'Failed to fetch holders' });
+  }
+};
