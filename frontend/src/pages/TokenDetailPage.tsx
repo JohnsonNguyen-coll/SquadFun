@@ -8,34 +8,77 @@ import TradeWidget from '@/components/token/TradeWidget';
 import BondingCurveBar from '@/components/token/BondingCurveBar';
 import { formatAddress, formatTokenAmount, timeAgo } from '@/utils/format';
 import { GRADUATION_TARGET } from '@/config/constants';
+import { useAccount, useSignMessage } from 'wagmi';
 import { socket } from '@/socket';
 
 const TokenDetailPage: React.FC = () => {
+  const { address: userAddress } = useAccount();
+  const { signMessageAsync } = useSignMessage();
   const { address } = useParams<{ address: string }>();
   const [activeInsightTab, setActiveInsightTab] = useState<'trades' | 'holders'>('trades');
   const [tradesPage, setTradesPage] = useState(1);
   const [holdersPage, setHoldersPage] = useState(1);
   const [token, setToken] = useState<Token | null>(null);
   const [trades, setTrades] = useState<any[]>([]);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isSendingComment, setIsSendingComment] = useState(false);
   const [loading, setLoading] = useState(true);
   
   const fetchData = async () => {
     if (!address) return;
     try {
-      const [tokenRes, tradesRes] = await Promise.all([
+      const [tokenRes, tradesRes, commentsRes] = await Promise.all([
         fetch(`${API_BASE_URL}/tokens/${address}`),
-        fetch(`${API_BASE_URL}/tokens/${address}/trades`)
+        fetch(`${API_BASE_URL}/tokens/${address}/trades`),
+        fetch(`${API_BASE_URL}/tokens/${address}/comments`)
       ]);
       
       const tokenData = await tokenRes.json();
       const tradesData = await tradesRes.json();
+      const commentsData = await commentsRes.json();
       
       setToken(tokenData);
       setTrades(tradesData);
+      setComments(commentsData);
     } catch (error) {
-      console.error('Error fetching token data:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendComment = async () => {
+    if (!newMessage.trim() || !userAddress || !address) return;
+    setIsSendingComment(true);
+    try {
+      const content = newMessage.trim();
+      const message = `I am commenting on ${address.toLowerCase()}: ${content}`;
+      const signature = await signMessageAsync({ 
+        message, 
+        account: userAddress as `0x${string}` 
+      });
+
+      const response = await fetch(`${API_BASE_URL}/tokens/${address}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content,
+          signature,
+          walletAddress: userAddress
+        })
+      });
+
+      if (response.ok) {
+        setNewMessage('');
+      } else {
+        const err = await response.json();
+        alert(`Failed to post comment: ${err.error}`);
+      }
+    } catch (error) {
+      console.error('Error sending comment:', error);
+    } finally {
+      setIsSendingComment(false);
     }
   };
 
@@ -94,12 +137,20 @@ const TokenDetailPage: React.FC = () => {
         }
       };
 
+      const commentUpdateHandler = (data: any) => {
+        if (data.tokenAddress.toLowerCase() === lowerAddress) {
+          setComments(prev => [data, ...prev]);
+        }
+      };
+
       socket.on('trade_update', tradeUpdateHandler);
+      socket.on('comment_new', commentUpdateHandler);
 
       return () => {
         socket.off('connect', handleConnect);
         socket.emit('unsubscribe', lowerAddress);
         socket.off('trade_update', tradeUpdateHandler);
+        socket.off('comment_new', commentUpdateHandler);
       };
     }
   }, [address]);
@@ -376,23 +427,58 @@ const TokenDetailPage: React.FC = () => {
             <BondingCurveBar progress={graduationProgress} />
           </div>
 
-          <div className="glass-card p-6">
+          <div className="glass-card p-6 h-[500px] flex flex-col">
             <h3 className="text-lg font-body font-extrabold tracking-normal mb-6 flex items-center gap-2">
               <span className="text-primary">💬</span> Alchemist Chat
             </h3>
-            <div className="space-y-6 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar mb-6">
-              <div className="text-center py-12 text-white/20">
-                <div className="text-3xl mb-2">🧊</div>
-                <p className="text-sm">Crystal ball is quiet... <br /> Be the first to speak!</p>
-              </div>
+            <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar mb-6">
+              {comments.length > 0 ? (
+                comments.map((comment, index) => (
+                  <div key={comment.id || index} className="group">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-mono font-bold text-primary-highlight">
+                        {formatAddress(comment.authorAddress)}
+                      </span>
+                      <span className="text-[10px] text-white/20">
+                        {timeAgo(comment.createdAt)}
+                      </span>
+                    </div>
+                    <div className="bg-white/[0.03] border border-white/5 rounded-xl px-4 py-3 text-sm text-white/80 font-body leading-relaxed group-hover:border-white/10 transition-colors">
+                      {comment.content}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12 text-white/20">
+                  <div className="text-3xl mb-2">🧊</div>
+                  <p className="text-sm">Crystal ball is quiet... <br /> Be the first to speak!</p>
+                </div>
+              )}
             </div>
-            <div className="relative">
+            <div className="relative mt-auto">
               <textarea 
-                placeholder="Cast your message..." 
-                className="w-full bg-background/50 border border-white/5 rounded-xl py-4 px-5 text-sm font-body focus:outline-none focus:border-primary/50 min-h-[100px] resize-none"
+                placeholder={userAddress ? "Cast your message..." : "Connect wallet to chat..."}
+                disabled={!userAddress || isSendingComment}
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendComment();
+                  }
+                }}
+                className="w-full bg-background/50 border border-white/5 rounded-xl py-4 px-5 pr-12 text-sm font-body focus:outline-none focus:border-primary/50 min-h-[100px] resize-none disabled:opacity-50 disabled:cursor-not-allowed"
               />
-              <button className="absolute bottom-4 right-4 text-primary hover:text-primary-bright transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+              <button 
+                onClick={handleSendComment}
+                disabled={!userAddress || isSendingComment || !newMessage.trim()}
+                className="absolute bottom-4 right-4 text-primary hover:text-primary-bright transition-colors disabled:opacity-0"
+              >
+                {isSendingComment ? (
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                )}
               </button>
             </div>
           </div>

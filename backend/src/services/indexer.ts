@@ -153,12 +153,46 @@ export const startIndexer = async () => {
       console.log(`🏭 Listening for new tokens on Factory: ${factoryAddress}`);
       const factoryContract = new ethers.Contract(factoryAddress, FACTORY_ABI, provider);
       
-      factoryContract.on("TokenCreated", (tokenAddress, name, symbol, description, imageUrl, creator) => {
-        console.log(`✨ NEW TOKEN DETECTED: ${name} (${symbol}) at ${tokenAddress}`);
-        // Small delay to ensure DB entry is created by the API first if it was created via our app
-        setTimeout(() => {
-          setupTokenListeners(tokenAddress, symbol, provider);
-        }, 2000);
+      factoryContract.on("TokenCreated", async (tokenAddress, name, symbol, description, imageUrl, creator) => {
+        const lowerTokenAddress = tokenAddress.toLowerCase();
+        const lowerCreator = creator.toLowerCase();
+        
+        console.log(`✨ NEW TOKEN DETECTED: ${name} (${symbol}) at ${lowerTokenAddress}`);
+        
+        try {
+          // Create token in database
+          await prisma.token.create({
+            data: {
+              contractAddress: lowerTokenAddress,
+              name,
+              symbol,
+              description,
+              imageUrl,
+              creatorAddress: lowerCreator,
+              totalSupply: 1000000000,
+              circulatingSupply: 0,
+              price: 0,
+              marketCap: 0,
+              reserveMon: 0
+            } as any
+          });
+
+          // Update creator's count
+          await prisma.user.upsert({
+            where: { walletAddress: lowerCreator },
+            update: { totalCreated: { increment: 1 } },
+            create: { walletAddress: lowerCreator, totalCreated: 1, username: `user_${lowerCreator.slice(2, 6)}` }
+          });
+
+          console.log(`✅ Indexed New Token: ${symbol}`);
+          
+          // Start listening to events for this new token
+          setupTokenListeners(lowerTokenAddress, symbol, provider);
+        } catch (error) {
+          console.error('❌ Error indexing TokenCreated:', error);
+          // Still try to setup listeners if it already exists
+          setupTokenListeners(lowerTokenAddress, symbol, provider);
+        }
       });
     }
 

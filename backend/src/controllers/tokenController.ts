@@ -35,7 +35,7 @@ export const getTokens = async (req: Request, res: Response) => {
 };
 
 export const getTokenDetail = async (req: Request, res: Response) => {
-  const address = req.params.address as string;
+  const address = (req.params.address as string).toLowerCase();
   try {
     const token = await prisma.token.findUnique({
       where: { contractAddress: address },
@@ -54,7 +54,7 @@ export const getTokenDetail = async (req: Request, res: Response) => {
 };
 
 export const getTokenTrades = async (req: Request, res: Response) => {
-  const address = req.params.address as string;
+  const address = (req.params.address as string).toLowerCase();
   const { page = 1, limit = 50 } = req.query;
   
   try {
@@ -71,7 +71,7 @@ export const getTokenTrades = async (req: Request, res: Response) => {
 };
 
 export const getChartData = async (req: Request, res: Response) => {
-  const address = req.params.address as string;
+  const address = (req.params.address as string).toLowerCase();
   const { timeframe = '1h' } = req.query;
 
   const timeframes = {

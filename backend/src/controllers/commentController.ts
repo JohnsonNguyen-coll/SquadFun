@@ -2,13 +2,15 @@ import type { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { ethers } from 'ethers';
 
+import { broadcast } from '../services/socketService.js';
+
 const prisma = new PrismaClient();
 
 export const getComments = async (req: Request, res: Response) => {
   const address = req.params.address as string;
   try {
     const comments = await prisma.comment.findMany({
-      where: { tokenAddress: address },
+      where: { tokenAddress: address.toLowerCase() },
       orderBy: { createdAt: 'desc' }
     });
     res.json(comments);
@@ -27,7 +29,7 @@ export const createComment = async (req: Request, res: Response) => {
 
   try {
     // Verify signature
-    const message = `I am commenting on ${address}: ${content}`;
+    const message = `I am commenting on ${address.toLowerCase()}: ${content}`;
     const recoveredAddress = ethers.verifyMessage(message, signature);
     
     if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
@@ -36,11 +38,14 @@ export const createComment = async (req: Request, res: Response) => {
 
     const comment = await prisma.comment.create({
       data: {
-        tokenAddress: address,
-        authorAddress: walletAddress,
+        tokenAddress: address.toLowerCase(),
+        authorAddress: walletAddress.toLowerCase(),
         content
       }
     });
+    
+    // Broadcast real-time comment
+    broadcast(address, 'comment_new', comment);
     
     res.json(comment);
   } catch (error) {
