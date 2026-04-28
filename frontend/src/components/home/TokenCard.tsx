@@ -12,7 +12,7 @@ interface TokenCardProps {
 
 const TokenCard: React.FC<TokenCardProps> = ({ token, rank }) => {
   const graduationProgress = Math.min(100, Number((parseEther(token.reserveMon?.toString() || '0') * 100n) / (GRADUATION_TARGET * 10n**18n)));
-  const isNew = new Date().getTime() - new Date(token.createdAt).getTime() < 3600000;
+  const isNew = new Date().getTime() - new Date(token.createdAt).getTime() < 86400000; // 24 hours
 
   return (
     <Link 
@@ -27,7 +27,7 @@ const TokenCard: React.FC<TokenCardProps> = ({ token, rank }) => {
             className="w-16 h-16 rounded-xl object-cover ring-2 ring-white/5 group-hover:ring-primary group-hover:rotate-1 transition-all"
           />
           {rank === 1 && (
-            <div className="absolute -top-2 -left-2 w-7 h-7 bg-gold rounded-full flex items-center justify-center text-xs shadow-lg border-2 border-background animate-bounce">
+            <div className="absolute -top-2 -left-2 w-8 h-8 bg-gradient-to-br from-yellow-300 to-yellow-600 rounded-full flex items-center justify-center text-sm shadow-lg border-2 border-background animate-bounce z-20">
               👑
             </div>
           )}

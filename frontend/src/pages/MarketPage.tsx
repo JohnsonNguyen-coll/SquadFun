@@ -86,7 +86,7 @@ const MarketPage: React.FC = () => {
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center">
                 <div className="text-xl md:text-2xl font-body font-extrabold text-primary-highlight">
-                  ◈ {Math.round(tokens.reduce((sum, token) => sum + token.marketCap, 0) / 1000)}K
+                  ◈ {(tokens.reduce((sum, token) => sum + Number(token.marketCap || 0), 0) / 1000).toFixed(1)}K
                 </div>
                 <div className="text-[10px] uppercase tracking-[0.12em] text-white/40 mt-1">Market Cap</div>
               </div>

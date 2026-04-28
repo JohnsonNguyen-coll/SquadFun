@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
-import { formatAddress } from '@/utils/format';
+import { formatAddress, formatTokenAmount } from '@/utils/format';
 import { supabase } from '@/config/supabase';
 import { API_BASE_URL } from '@/config/constants';
 
@@ -258,7 +258,7 @@ const ProfilePage: React.FC = () => {
                     <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
                       <div>
                         <div className="text-[9px] uppercase tracking-widest text-white/30 font-bold mb-1">Mkt Cap</div>
-                        <div className="text-xs font-mono font-bold text-emerald-400">${Number(token.marketCap).toLocaleString()}</div>
+                        <div className="text-xs font-mono font-bold text-white/90">◈ {formatTokenAmount(token.marketCap)}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-[9px] uppercase tracking-widest text-white/30 font-bold mb-1">Price</div>
