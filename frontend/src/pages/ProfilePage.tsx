@@ -4,6 +4,7 @@ import { useAccount } from 'wagmi';
 import TokenGrid from '@/components/home/TokenGrid';
 import { formatAddress } from '@/utils/format';
 import { supabase } from '@/config/supabase';
+import { API_BASE_URL } from '@/config/constants';
 
 interface UserData {
   profile: {
@@ -39,7 +40,7 @@ const ProfilePage: React.FC = () => {
 
   const fetchProfile = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/user/${address}`);
+      const response = await fetch(`${API_BASE_URL}/user/${address}`);
       const result = await response.json();
       setData(result);
       setEditForm({
@@ -90,7 +91,7 @@ const ProfilePage: React.FC = () => {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:3001/api/user/update', {
+      const response = await fetch(`${API_BASE_URL}/user/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -4,6 +4,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useBalance } from 'wagmi';
 import { formatMON } from '@/utils/format';
 import logo from '@/assets/logosquadfun.png';
+import { API_BASE_URL } from '@/config/constants';
 
 const Navbar: React.FC = () => {
   const { address, isConnected } = useAccount();
@@ -12,7 +13,7 @@ const Navbar: React.FC = () => {
   // Sync user with backend on connection
   React.useEffect(() => {
     if (isConnected && address) {
-      fetch('http://localhost:3001/api/user/sync', {
+      fetch(`${API_BASE_URL}/user/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress: address })
