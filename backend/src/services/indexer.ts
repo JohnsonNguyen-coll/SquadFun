@@ -33,18 +33,27 @@ const setupTokenListeners = (tokenAddress: string, symbol: string, provider: eth
     const txHash = event.log.transactionHash;
 
     console.log(`\n💰 BUY EVENT: ${tokenAmountStr} ${symbol} bought by ${buyer}`);
+    const lowerTxHash = txHash.toLowerCase();
+    const lowerBuyer = buyer.toLowerCase();
 
     try {
+      // Kiểm tra xem txHash đã được xử lý chưa
+      const existingTrade = await prisma.trade.findUnique({ where: { txHash: lowerTxHash } });
+      if (existingTrade) {
+        console.log(`⚠️ Transaction ${lowerTxHash} already indexed. Skipping.`);
+        return;
+      }
+
       await prisma.$transaction([
         prisma.trade.create({
           data: {
-            tokenAddress: tokenAddress,
-            traderAddress: buyer,
+            tokenAddress: tokenAddress.toLowerCase(),
+            traderAddress: lowerBuyer,
             type: 'buy',
             ethAmount: monAmountStr,
             tokenAmount: tokenAmountStr,
             priceAtTrade: priceStr,
-            txHash: txHash,
+            txHash: lowerTxHash,
             timestamp: new Date()
           }
         }),
@@ -56,6 +65,11 @@ const setupTokenListeners = (tokenAddress: string, symbol: string, provider: eth
             reserveMon: { increment: monAmountStr },
             marketCap: (Number(priceStr) * 1_000_000_000).toString()
           } as any
+        }),
+        prisma.user.upsert({
+          where: { walletAddress: lowerBuyer },
+          update: { totalTraded: { increment: 1 } },
+          create: { walletAddress: lowerBuyer, totalTraded: 1, username: `user_${lowerBuyer.slice(2, 6)}` }
         })
       ]);
 
@@ -82,18 +96,27 @@ const setupTokenListeners = (tokenAddress: string, symbol: string, provider: eth
     const txHash = event.log.transactionHash;
 
     console.log(`\n📉 SELL EVENT: ${tokenAmountStr} ${symbol} sold by ${seller}`);
+    const lowerTxHash = txHash.toLowerCase();
+    const lowerSeller = seller.toLowerCase();
 
     try {
+      // Kiểm tra xem txHash đã được xử lý chưa
+      const existingTrade = await prisma.trade.findUnique({ where: { txHash: lowerTxHash } });
+      if (existingTrade) {
+        console.log(`⚠️ Transaction ${lowerTxHash} already indexed. Skipping.`);
+        return;
+      }
+
       await prisma.$transaction([
         prisma.trade.create({
           data: {
-            tokenAddress: tokenAddress,
-            traderAddress: seller,
+            tokenAddress: tokenAddress.toLowerCase(),
+            traderAddress: lowerSeller,
             type: 'sell',
             ethAmount: monAmountStr,
             tokenAmount: tokenAmountStr,
             priceAtTrade: priceStr,
-            txHash: txHash,
+            txHash: lowerTxHash,
             timestamp: new Date()
           }
         }),
@@ -105,6 +128,11 @@ const setupTokenListeners = (tokenAddress: string, symbol: string, provider: eth
             reserveMon: { decrement: monAmountStr },
             marketCap: (Number(priceStr) * 1_000_000_000).toString()
           } as any
+        }),
+        prisma.user.upsert({
+          where: { walletAddress: lowerSeller },
+          update: { totalTraded: { increment: 1 } },
+          create: { walletAddress: lowerSeller, totalTraded: 1, username: `user_${lowerSeller.slice(2, 6)}` }
         })
       ]);
 

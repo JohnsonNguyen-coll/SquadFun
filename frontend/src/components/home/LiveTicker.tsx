@@ -34,14 +34,15 @@ const LiveTicker: React.FC = () => {
 
   // Use GSAP ticker for smooth 60fps marquee
   useGSAP(() => {
-    if (!tickerRef.current) return;
+    if (!tickerRef.current || tokens.length === 0) return;
 
+    // Đợi một chút để DOM cập nhật chiều rộng chính xác
     const tickerWidth = tickerRef.current.offsetWidth / 2;
     
     const tl = gsap.timeline({ repeat: -1 });
     tl.to(tickerRef.current, {
       x: -tickerWidth,
-      duration: 60,
+      duration: 30, // Tăng tốc độ bằng cách giảm thời gian (30s)
       ease: 'none',
     });
 
@@ -55,7 +56,7 @@ const LiveTicker: React.FC = () => {
       containerRef.current?.removeEventListener('mouseenter', onEnter);
       containerRef.current?.removeEventListener('mouseleave', onLeave);
     };
-  }, []);
+  }, [tokens]);
 
   // Double the tokens for seamless loop
   const displayTokens = [...tokens, ...tokens];

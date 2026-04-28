@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useBalance } from 'wagmi';
 import { formatMON } from '@/utils/format';
@@ -9,9 +9,10 @@ import { API_BASE_URL } from '@/config/constants';
 const Navbar: React.FC = () => {
   const { address, isConnected } = useAccount();
   const { data: balance } = useBalance({ address });
+  const location = useLocation();
 
   // Sync user with backend on connection
-  React.useEffect(() => {
+  useEffect(() => {
     if (isConnected && address) {
       fetch(`${API_BASE_URL}/user/sync`, {
         method: 'POST',
@@ -20,6 +21,9 @@ const Navbar: React.FC = () => {
       }).catch(err => console.error('Sync error:', err));
     }
   }, [isConnected, address]);
+
+  const isActive = (path: string) => location.pathname === path;
+  const isProfileActive = () => location.pathname.startsWith('/profile/');
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-primary/15">
@@ -32,11 +36,11 @@ const Navbar: React.FC = () => {
         </Link>
 
         <div className="hidden md:flex items-center gap-8">
-          <Link to="/market" className="text-sm font-medium text-white/60 hover:text-white transition-colors">Market</Link>
-          <Link to="/leaderboard" className="text-sm font-medium text-white/60 hover:text-white transition-colors">Hall of Fame</Link>
-          <Link to="/create" className="text-sm font-medium text-white/60 hover:text-white transition-colors">Cast Spell</Link>
+          <Link to="/market" className={`text-sm font-medium transition-colors ${isActive('/market') ? 'text-primary' : 'text-white/60 hover:text-white'}`}>Market</Link>
+          <Link to="/leaderboard" className={`text-sm font-medium transition-colors ${isActive('/leaderboard') ? 'text-primary' : 'text-white/60 hover:text-white'}`}>Hall of Fame</Link>
+          <Link to="/create" className={`text-sm font-medium transition-colors ${isActive('/create') ? 'text-primary' : 'text-white/60 hover:text-white'}`}>Cast Spell</Link>
           {isConnected && (
-            <Link to={`/profile/${address}`} className="text-sm font-medium text-primary hover:text-primary-glow transition-colors">My Profile</Link>
+            <Link to={`/profile/${address}`} className={`text-sm font-medium transition-colors ${isProfileActive() ? 'text-primary' : 'text-white/60 hover:text-white'}`}>My Profile</Link>
           )}
         </div>
 

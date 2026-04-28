@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export const getUserProfile = async (req: Request, res: Response) => {
-  const address = req.params.address as string;
+  const address = (req.params.address as string).toLowerCase();
   
   try {
     const user = await prisma.user.findUnique({
@@ -25,8 +25,12 @@ export const getUserProfile = async (req: Request, res: Response) => {
       include: { token: true }
     });
 
+    const totalTradedCount = await prisma.trade.count({
+      where: { traderAddress: address }
+    });
+
     res.json({
-      profile: user || { walletAddress: address, totalCreated: 0, totalTraded: 0 },
+      profile: user ? { ...user, totalTraded: totalTradedCount } : { walletAddress: address, totalCreated: 0, totalTraded: totalTradedCount },
       tokens: createdTokens,
       trades
     });
@@ -37,12 +41,13 @@ export const getUserProfile = async (req: Request, res: Response) => {
 
 export const updateProfile = async (req: Request, res: Response) => {
   const { walletAddress, username, avatarUrl, bio } = req.body;
+  const lowerAddress = walletAddress.toLowerCase();
   
   try {
     const updatedUser = await prisma.user.upsert({
-      where: { walletAddress },
+      where: { walletAddress: lowerAddress },
       update: { username, avatarUrl, bio },
-      create: { walletAddress, username, avatarUrl, bio }
+      create: { walletAddress: lowerAddress, username, avatarUrl, bio }
     });
     
     res.json(updatedUser);
@@ -53,11 +58,12 @@ export const updateProfile = async (req: Request, res: Response) => {
 
 export const syncUser = async (req: Request, res: Response) => {
   const { walletAddress } = req.body;
+  const lowerAddress = walletAddress.toLowerCase();
   try {
     const user = await prisma.user.upsert({
-      where: { walletAddress },
-      update: {}, // Không thay đổi gì nếu đã có
-      create: { walletAddress } // Tạo mới nếu chưa có
+      where: { walletAddress: lowerAddress },
+      update: {}, 
+      create: { walletAddress: lowerAddress } 
     });
     res.json(user);
   } catch (error) {

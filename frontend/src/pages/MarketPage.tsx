@@ -31,9 +31,14 @@ const MarketPage: React.FC = () => {
     let list = [...tokens];
     
     if (activeTab === 'new') {
+      // Sắp xếp theo thời gian tạo mới nhất
       list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } else if (activeTab === 'graduated') {
+      // Lọc các token đã tốt nghiệp
       list = list.filter(t => t.graduated);
+    } else {
+      // Mặc định cho Trending: Sắp xếp theo Market Cap giảm dần
+      list.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
     }
     
     if (searchQuery) {
@@ -44,7 +49,7 @@ const MarketPage: React.FC = () => {
     }
     
     return list;
-  }, [activeTab, searchQuery]);
+  }, [activeTab, searchQuery, tokens]);
 
   return (
     <div className="pb-24">
