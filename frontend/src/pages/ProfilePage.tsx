@@ -4,6 +4,7 @@ import { useAccount } from 'wagmi';
 import { formatAddress, formatTokenAmount } from '@/utils/format';
 import { supabase } from '@/config/supabase';
 import { API_BASE_URL } from '@/config/constants';
+import { showToast } from '@/components/shared/Toast';
 
 interface UserData {
   profile: {
@@ -85,7 +86,7 @@ const ProfilePage: React.FC = () => {
       setEditForm(prev => ({ ...prev, avatarUrl: publicUrl }));
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert('Upload failed!');
+      showToast('Profile image upload failed!', 'error');
     } finally {
       setUploading(false);
     }

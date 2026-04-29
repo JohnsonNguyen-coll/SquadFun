@@ -8,6 +8,7 @@ import { parseEther, formatEther } from 'viem';
 import { FACTORY_ADDRESS } from '@/config/constants';
 import { MEME_FACTORY_ABI } from '@/config/abi';
 import { useNavigate } from 'react-router-dom';
+import { showToast } from '@/components/shared/Toast';
 
 const CreateTokenPage: React.FC = () => {
   const { address } = useAccount();
@@ -67,7 +68,7 @@ const CreateTokenPage: React.FC = () => {
       setFormData(prev => ({ ...prev, imageUrl: publicUrl }));
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert('Upload failed!');
+      showToast('Image upload failed!', 'error');
     } finally {
       setUploading(false);
     }
@@ -76,11 +77,11 @@ const CreateTokenPage: React.FC = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.imageUrl) {
-      alert('Please upload an image for your spell!');
+      showToast('Please upload an image for your spell!', 'info');
       return;
     }
     if (!address) {
-      alert('Please connect your wallet first!');
+      showToast('Please connect your wallet first!', 'info');
       return;
     }
 
@@ -109,11 +110,11 @@ const CreateTokenPage: React.FC = () => {
         colors: ['#8B5CF6', '#A78BFA', '#7C3AED', '#ffffff']
       });
 
-      alert('Spell cast successfully! Your token is being created on Monad.');
+      showToast('Spell cast successfully! Your token is being created on Monad.', 'success');
       navigate('/');
     } catch (error) {
       console.error('Error creating token:', error);
-      alert('Failed to cast spell. Check console for details.');
+      showToast('Failed to cast spell. Please check your wallet.', 'error');
     } finally {
       setIsCasting(false);
     }

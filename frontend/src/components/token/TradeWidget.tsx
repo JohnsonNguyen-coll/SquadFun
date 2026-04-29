@@ -4,6 +4,7 @@ import { useWriteContract, useAccount, useBalance, useWaitForTransactionReceipt 
 import { parseEther, parseAbi, formatEther, type Hash } from 'viem';
 import type { Token } from '@/mocks/data';
 import confetti from 'canvas-confetti';
+import { showToast } from '@/components/shared/Toast';
 
 interface TradeWidgetProps {
   token: Token;
@@ -76,9 +77,9 @@ const TradeWidget: React.FC<TradeWidgetProps> = ({ token, onTradeSuccess }) => {
     } catch (error: any) {
       console.error('Full trade error:', error);
       if (error.message?.includes('rejected')) {
-        alert('Giao dịch đã bị hủy từ ví của bạn.');
+        showToast('Transaction was rejected in your wallet.', 'info');
       } else {
-        alert(`Giao dịch thất bại: ${error.shortMessage || error.message || 'Lỗi không xác định'}`);
+        showToast(`Transaction failed: ${error.shortMessage || error.message || 'Unknown error'}`, 'error');
       }
     } finally {
       setIsProcessing(false);

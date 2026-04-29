@@ -8,6 +8,7 @@ import BondingCurveBar from '@/components/token/BondingCurveBar';
 import { formatAddress, formatTokenAmount, timeAgo } from '@/utils/format';
 import { useAccount, useSignMessage } from 'wagmi';
 import { socket } from '@/socket';
+import { showToast } from '@/components/shared/Toast';
 
 const TokenDetailPage: React.FC = () => {
   const { address: userAddress } = useAccount();
@@ -73,9 +74,10 @@ const TokenDetailPage: React.FC = () => {
 
       if (response.ok) {
         setNewMessage('');
+        showToast('Comment posted successfully!', 'success');
       } else {
         const err = await response.json();
-        alert(`Failed to post comment: ${err.error}`);
+        showToast(`Failed to post comment: ${err.error}`, 'error');
       }
     } catch (error) {
       console.error('Error sending comment:', error);

@@ -1,53 +1,77 @@
-import React, { useRef } from 'react';
-import { gsap } from 'gsap';
-import { useGSAP } from '@gsap/react';
+import React, { useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 
 interface ToastProps {
   message: string;
-  type?: 'success' | 'error' | 'info';
+  type: 'success' | 'error' | 'info';
   onClose: () => void;
-  visible: boolean;
 }
 
-const Toast: React.FC<ToastProps> = ({ message, type = 'info', onClose, visible }) => {
-  const toastRef = useRef<HTMLDivElement>(null);
+const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
+  const [isVisible, setIsVisible] = useState(false);
 
-  useGSAP(() => {
-    if (visible) {
-      gsap.fromTo(toastRef.current, 
-        { x: 120, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.3, ease: 'back.out(1.7)' }
-      );
-    } else {
-      gsap.to(toastRef.current, { 
-        x: 120, 
-        opacity: 0, 
-        duration: 0.2, 
-        ease: 'power2.in',
-        onComplete: onClose
-      });
-    }
-  }, [visible]);
+  useEffect(() => {
+    setIsVisible(true);
+    const timer = setTimeout(() => {
+      setIsVisible(false);
+      setTimeout(onClose, 300); // Wait for fade out animation
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
 
-  if (!visible && !toastRef.current) return null;
+  const bgColors = {
+    success: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+    error: 'bg-rose-500/10 border-rose-500/20 text-rose-400',
+    info: 'bg-primary/10 border-primary/20 text-primary-highlight',
+  };
 
-  const getBgColor = () => {
-    switch (type) {
-      case 'success': return 'bg-emerald-400/10 border-emerald-400/50 text-emerald-400';
-      case 'error': return 'bg-red-400/10 border-red-400/50 text-red-400';
-      default: return 'bg-primary/10 border-primary/50 text-primary-highlight';
-    }
+  const icons = {
+    success: '✨',
+    error: '❌',
+    info: 'ℹ️',
   };
 
   return (
     <div 
-      ref={toastRef}
-      className={`fixed bottom-8 right-8 z-[100] px-6 py-4 rounded-xl border backdrop-blur-xl flex items-center gap-3 shadow-2xl ${getBgColor()}`}
+      className={`fixed top-24 right-6 z-[9999] min-w-[320px] max-w-[400px] p-4 rounded-2xl border backdrop-blur-xl shadow-2xl transition-all duration-300 transform ${
+        isVisible ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0'
+      } ${bgColors[type]}`}
     >
-      <div className="font-mono text-sm font-bold uppercase">{type}</div>
-      <div className="font-body text-sm text-white/90">{message}</div>
+      <div className="flex items-start gap-3">
+        <span className="text-xl">{icons[type]}</span>
+        <div className="flex-1">
+          <h4 className="text-[10px] uppercase tracking-widest font-black mb-1 opacity-50">
+            {type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'System Message'}
+          </h4>
+          <p className="text-sm font-body font-medium leading-relaxed">{message}</p>
+        </div>
+        <button 
+          onClick={() => setIsVisible(false)}
+          className="text-white/20 hover:text-white transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div className="absolute bottom-0 left-0 h-1 bg-current opacity-20 animate-[toast-progress_4s_linear_forwards]" />
     </div>
   );
 };
 
-export default Toast;
+// Singleton controller for toast
+let toastContainer: HTMLDivElement | null = null;
+let root: any = null;
+
+export const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    document.body.appendChild(toastContainer);
+    root = createRoot(toastContainer);
+  }
+
+  const handleClose = () => {
+    // We could handle multiple toasts here, but for simplicity let's just clear
+    root.render(null);
+  };
+
+  root.render(<Toast message={message} type={type} onClose={handleClose} />);
+};
