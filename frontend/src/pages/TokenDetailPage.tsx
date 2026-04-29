@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { API_BASE_URL } from '@/config/constants';
+import { API_BASE_URL, GRADUATION_TARGET } from '@/config/constants';
+import { parseEther } from 'viem';
 import type { Token } from '@/mocks/data';
 import PriceChart from '@/components/token/PriceChart';
 import TradeWidget from '@/components/token/TradeWidget';
-import BondingCurveBar from '@/components/token/BondingCurveBar';
 import { formatAddress, formatTokenAmount, timeAgo } from '@/utils/format';
 import { useAccount, useSignMessage } from 'wagmi';
 import { socket } from '@/socket';
@@ -124,6 +124,7 @@ const TokenDetailPage: React.FC = () => {
             return {
               ...prev,
               price: newPrice,
+              priceChange24h: Number(data.priceChange || 0),
               circulatingSupply: data.type === 'buy'
                 ? Number(prev.circulatingSupply || 0) + Number(data.tokenAmount)
                 : Number(prev.circulatingSupply || 0) - Number(data.tokenAmount),
@@ -189,15 +190,21 @@ const TokenDetailPage: React.FC = () => {
   const recentTrades = trades.map(t => ({
     wallet: t.traderAddress ? `${t.traderAddress.slice(0, 12)}...${t.traderAddress.slice(-8)}` : 'Unknown',
     fullWallet: t.traderAddress,
+    type: t.type,
+    tokenAmount: t.tokenAmount,
+    ethAmount: t.ethAmount,
+    timestamp: t.timestamp,
     side: t.type === 'buy' ? 'Buy' : 'Sell',
     amount: formatTokenAmount(t.tokenAmount),
-    value: `◈ ${Number(t.ethAmount || 0).toFixed(2)}`,
+    value: `◈ ${Number(t.ethAmount || 0).toFixed(4)}`,
     time: timeAgo(t.timestamp),
     txHash: t.txHash
   }));
   const tradesPerPage = 4;
   const holdersPerPage = 5;
-  const totalTradesPages = Math.max(1, Math.ceil(recentTrades.length / tradesPerPage));
+  const graduationProgress = Math.min(100, Number((parseEther(token.reserveMon?.toString() || '0') * 100n) / (GRADUATION_TARGET * 10n**18n)));
+
+  const totalTradesPages = Math.max(1, Math.ceil(trades.length / tradesPerPage));
   const totalHoldersPages = Math.max(1, Math.ceil(topHolders.length / holdersPerPage));
   const visibleTrades = recentTrades.slice((tradesPage - 1) * tradesPerPage, tradesPage * tradesPerPage);
   const visibleHolders = topHolders.slice((holdersPage - 1) * holdersPerPage, holdersPage * holdersPerPage);
@@ -243,8 +250,14 @@ const TokenDetailPage: React.FC = () => {
                 <div className="text-[10px] uppercase tracking-[0.12em] text-white/30 font-semibold mb-1">Market Cap</div>
                 <div className="font-mono text-xl font-bold text-white/90">◈ {formatTokenAmount(token.marketCap)}</div>
               </div>
+              <div className="px-6 py-3 rounded-2xl bg-surface border border-white/5">
+                <div className="text-[10px] uppercase tracking-[0.12em] text-white/30 font-semibold mb-1">Reserve</div>
+                <div className="font-mono text-xl font-bold text-primary-highlight">◈ {Number(token.reserveMon || 0).toFixed(2)}</div>
+              </div>
             </div>
           </div>
+
+
 
           <PriceChart tokenAddress={token.contractAddress} currentPrice={Number(token.price || 0)} />
 
@@ -355,10 +368,10 @@ const TokenDetailPage: React.FC = () => {
                               {trade.wallet}
                             </Link>
                           </td>
-                          <td className={`py-3 font-semibold ${trade.side === 'Buy' ? 'text-emerald-400' : 'text-rose-400'} w-20 text-center`}>{trade.side}</td>
-                          <td className="py-3 text-white/70 w-24 text-center">{trade.amount}</td>
-                          <td className="py-3 text-white/90 font-mono w-24 text-center">{trade.value}</td>
-                          <td className="py-3 text-center text-white/45 w-28">{trade.time}</td>
+                          <td className={`py-3 font-semibold ${trade.type === 'buy' ? 'text-emerald-400' : 'text-rose-400'} w-20 text-center`}>{trade.type === 'buy' ? 'Buy' : 'Sell'}</td>
+                          <td className="py-3 text-white/70 w-24 text-center">{formatTokenAmount(trade.tokenAmount)}</td>
+                          <td className="py-4 font-mono text-xs text-white/90 text-center">◈ {Number(trade.ethAmount || 0).toFixed(4)}</td>
+                          <td className="py-4 font-mono text-[10px] text-white/30 text-center">{timeAgo(trade.timestamp)}</td>
                           <td className="py-3 w-24">
                             <div className="flex justify-center">
                               {trade.txHash ? (
@@ -448,13 +461,30 @@ const TokenDetailPage: React.FC = () => {
 
         <div className="lg:col-span-4 space-y-8">
           <TradeWidget token={token} onTradeSuccess={fetchData} />
-          <div className="glass-card p-6">
-            <BondingCurveBar reserveMon={Number(token.reserveMon || 0)} />
+
+          <div className="glass-card p-6 border-primary/20 bg-primary/5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-body font-black uppercase tracking-widest text-white/80">Bonding Curve Progress</h3>
+              <span className="font-mono text-lg font-black text-primary">{graduationProgress}%</span>
+            </div>
+            <div className="h-4 w-full bg-background rounded-full overflow-hidden p-1 border border-white/5 mb-4">
+              <div 
+                className="h-full bg-gradient-to-r from-primary to-monad rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(236,72,153,0.5)]"
+                style={{ width: `${graduationProgress}%` }}
+              />
+            </div>
+            <div className="space-y-3 text-[10px] font-body leading-relaxed text-white/40">
+              <p className="flex justify-between">
+                <span>Graduation Goal:</span>
+                <span className="text-white/80 font-mono font-bold">{formatTokenAmount(Number(GRADUATION_TARGET))} ◈</span>
+              </p>
+              <p>When the reserve reaches {formatTokenAmount(Number(GRADUATION_TARGET))} MON (or 70% supply sold), all liquidity is migrated to <span className="text-primary font-bold">Uniswap</span> and locked. The token is then "graduated" and enters the hall of fame.</p>
+            </div>
           </div>
 
-          <div className="glass-card p-6 h-[500px] flex flex-col">
+          <div className="glass-card p-6 border-monad/20">
             <h3 className="text-lg font-body font-extrabold tracking-normal mb-6 flex items-center gap-2">
-              <span className="text-primary">💬</span> Alchemist Chat
+              <span className="text-2xl">💬</span> Alchemist Chat
             </h3>
             <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar mb-6">
               {comments.length > 0 ? (

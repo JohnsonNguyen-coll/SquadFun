@@ -38,9 +38,9 @@ const TokenCard: React.FC<TokenCardProps> = ({ token, rank }) => {
           )}
         </div>
         <div className="text-right">
-          <div className="font-mono text-xs text-white/40 mb-1">{timeAgo(token.createdAt)}</div>
-          <div className={`font-mono text-sm font-bold ${getPriceChangeColor(token.priceChange24h || 0)}`}>
-            {(token.priceChange24h || 0) > 0 ? '+' : ''}{(token.priceChange24h || 0).toFixed(1)}%
+          <div className="font-mono text-[9px] text-white/30 mb-1">{timeAgo(token.createdAt)}</div>
+          <div className={`inline-block px-2 py-0.5 rounded-lg text-[11px] font-mono font-black ${Number(token.priceChange24h) >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+            {Number(token.priceChange24h) >= 0 ? '+' : ''}{Number(token.priceChange24h || 0).toFixed(2)}%
           </div>
         </div>
       </div>

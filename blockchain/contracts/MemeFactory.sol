@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @dev Factory contract to create new MemeTokens.
  */
 contract MemeFactory is Ownable {
-    uint256 public creationFee = 0.001 ether;
+    uint256 public creationFee = 0.1 ether;
     address public platformTreasury;
     address[] public allTokens;
 

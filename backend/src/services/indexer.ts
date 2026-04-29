@@ -19,11 +19,19 @@ const FACTORY_ABI = [
 
 const activeListeners = new Set<string>();
 
-// Helper to process a buy event (reusable for initial buy and subsequent buys)
+// Virtual price at t=0 for 69k MON target (29,571 / 1,000,000,000)
+const INITIAL_VIRTUAL_PRICE = 0.000029571;
+
+// Helper to process a buy event
 const processBuyEvent = async (tokenAddress: string, symbol: string, buyer: string, monIn: bigint, tokensOut: bigint, newPrice: bigint, txHash: string) => {
     const monAmountStr = ethers.formatEther(monIn);
     const tokenAmountStr = ethers.formatUnits(tokensOut, 18);
     const priceStr = ethers.formatEther(newPrice);
+    const currentPriceNum = Number(priceStr);
+    
+    // Calculate % change relative to initial virtual price
+    const priceChange = ((currentPriceNum - INITIAL_VIRTUAL_PRICE) / INITIAL_VIRTUAL_PRICE) * 100;
+
     const lowerTxHash = txHash.toLowerCase();
     const lowerBuyer = buyer.toLowerCase();
     const lowerTokenAddress = tokenAddress.toLowerCase();
@@ -54,6 +62,7 @@ const processBuyEvent = async (tokenAddress: string, symbol: string, buyer: stri
           where: { contractAddress: lowerTokenAddress },
           data: {
             price: priceStr,
+            priceChange24h: priceChange,
             circulatingSupply: { increment: Number(tokenAmountStr) },
             reserveMon: newReserve,
             marketCap: newMC
@@ -70,13 +79,14 @@ const processBuyEvent = async (tokenAddress: string, symbol: string, buyer: stri
         tokenAddress: lowerTokenAddress,
         type: 'buy',
         price: priceStr,
+        priceChange: priceChange,
         marketCap: newMC,
         monAmount: monAmountStr,
         tokenAmount: tokenAmountStr,
         traderAddress: buyer,
         txHash: txHash
       });
-      console.log(`✅ Indexed Buy for ${symbol}`);
+      console.log(`✅ Indexed Buy for ${symbol}: ${priceChange.toFixed(2)}%`);
     } catch (error) {
       console.error(`❌ Error indexing Buy for ${symbol}:`, error);
     }
@@ -95,6 +105,11 @@ const setupTokenListeners = (tokenAddress: string, symbol: string, provider: eth
     const monAmountStr = ethers.formatEther(monOut);
     const tokenAmountStr = ethers.formatUnits(tokensIn, 18);
     const priceStr = ethers.formatEther(newPrice);
+    const currentPriceNum = Number(priceStr);
+    
+    // Calculate % change relative to initial virtual price
+    const priceChange = ((currentPriceNum - INITIAL_VIRTUAL_PRICE) / INITIAL_VIRTUAL_PRICE) * 100;
+    
     const txHash = event.log.transactionHash;
 
     try {
@@ -123,6 +138,7 @@ const setupTokenListeners = (tokenAddress: string, symbol: string, provider: eth
           where: { contractAddress: tokenAddress.toLowerCase() },
           data: {
             price: priceStr,
+            priceChange24h: priceChange,
             circulatingSupply: { decrement: Number(tokenAmountStr) },
             reserveMon: newReserve,
             marketCap: newMC
@@ -139,6 +155,7 @@ const setupTokenListeners = (tokenAddress: string, symbol: string, provider: eth
         tokenAddress: tokenAddress.toLowerCase(),
         type: 'sell',
         price: priceStr,
+        priceChange: priceChange,
         marketCap: newMC,
         monAmount: monAmountStr,
         tokenAmount: tokenAmountStr,
@@ -173,7 +190,6 @@ export const startIndexer = async () => {
       factoryContract.on("TokenCreated", async (tokenAddress, name, symbol, description, imageUrl, creator, event) => {
         const lowerTokenAddress = tokenAddress.toLowerCase();
         const blockNumber = event.log.blockNumber;
-        const txHash = event.log.transactionHash;
 
         try {
           await prisma.token.create({
@@ -186,9 +202,10 @@ export const startIndexer = async () => {
               creatorAddress: creator.toLowerCase(),
               totalSupply: 1000000000,
               circulatingSupply: 0,
-              price: "0", 
+              price: INITIAL_VIRTUAL_PRICE.toString(), 
               marketCap: "0", 
-              reserveMon: 0
+              reserveMon: 0,
+              priceChange24h: 0
             } as any
           });
           
@@ -209,7 +226,8 @@ export const startIndexer = async () => {
             for (const log of logs) {
               const parsed = tokenContract.interface.parseLog(log as any);
               if (parsed) {
-                await processBuyEvent(tokenAddress, symbol, parsed.args.buyer, parsed.args.monIn, parsed.args.tokensOut, parsed.args.newPrice, log.transactionHash);
+                // Use the creator address instead of parsed.args.buyer (which is the Factory)
+                await processBuyEvent(tokenAddress, symbol, creator, parsed.args.monIn, parsed.args.tokensOut, parsed.args.newPrice, log.transactionHash);
               }
             }
           }

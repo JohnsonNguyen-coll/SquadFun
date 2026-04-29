@@ -14,10 +14,10 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 contract MemeToken is ERC20, ReentrancyGuard, Pausable, Ownable {
     uint256 public constant TOTAL_SUPPLY = 1_000_000_000 * 10**18;
     uint256 public constant MAX_BONDING_SUPPLY = 700_000_000 * 10**18;
-    uint256 public constant GRADUATION_TARGET = 6900000 ether;
+    uint256 public constant GRADUATION_TARGET = 69000 ether;
     
-    // Virtual Reserves for 6,900,000 MON target raise
-    uint256 public virtualMonReserve = 2957143 ether;
+    // Virtual Reserves for 69,000 MON target raise
+    uint256 public virtualMonReserve = 29571 ether;
     uint256 public virtualTokenReserve = 1000000000 * 10**18;
     
     // We calculate K dynamically to avoid constant overflow issues in some compilers, 

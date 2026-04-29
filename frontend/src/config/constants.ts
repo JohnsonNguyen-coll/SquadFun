@@ -1,6 +1,6 @@
-export const GRADUATION_TARGET = 6900000n; // 6,900,000 MON
+export const GRADUATION_TARGET = 69000n; // 69,000 MON target raise
 export const MAX_BONDING_SUPPLY = 700_000_000n; // 70% of total supply
-export const CREATION_FEE = 0.001; // Update to match contract 0.001 ether
+export const CREATION_FEE = 0.1; // Updated to 0.1 MON to prevent spam
 export const TOTAL_SUPPLY = 1_000_000_000n; // 1 Billion tokens
 export const BASE_PRICE = 0; // Show 0 initially for the "Real MC" model
 
@@ -22,4 +22,5 @@ export const ROUTES = {
   CREATE: '/create',
   PROFILE: '/profile/:address',
   LEADERBOARD: '/leaderboard',
+  HALL_OF_FAME: '/hall-of-fame',
 };

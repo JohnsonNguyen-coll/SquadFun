@@ -11,6 +11,7 @@ import MarketPage from './pages/MarketPage';
 import TokenDetailPage from './pages/TokenDetailPage';
 import CreateTokenPage from './pages/CreateTokenPage';
 import LeaderboardPage from './pages/LeaderboardPage';
+import HallOfFamePage from './pages/HallOfFamePage';
 import ProfilePage from './pages/ProfilePage';
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ function App() {
                 <Route path="token/:address" element={<TokenDetailPage />} />
                 <Route path="create" element={<CreateTokenPage />} />
                 <Route path="leaderboard" element={<LeaderboardPage />} />
+                <Route path="hall-of-fame" element={<HallOfFamePage />} />
                 <Route path="profile/:address" element={<ProfilePage />} />
               </Route>
             </Routes>

@@ -82,8 +82,8 @@ const LiveTicker: React.FC = () => {
             <span className="font-body font-semibold text-sm tracking-normal text-white/80 group-hover/item:text-white">
               {token.symbol}
             </span>
-            <span className="font-mono text-xs font-bold text-emerald-400">
-              +{(token.priceChange24h || 0).toFixed(1)}%
+            <span className={`font-mono text-xs font-bold ${Number(token.priceChange24h) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {Number(token.priceChange24h) >= 0 ? '+' : ''}{Number(token.priceChange24h || 0).toFixed(2)}%
             </span>
             <span className="font-mono text-[10px] text-white/20">
               {formatMON(token.reserveMon)}

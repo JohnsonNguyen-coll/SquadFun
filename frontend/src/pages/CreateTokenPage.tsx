@@ -5,7 +5,7 @@ import confetti from 'canvas-confetti';
 import { supabase } from '@/config/supabase';
 import { useAccount, useWriteContract, useBalance } from 'wagmi';
 import { parseEther, formatEther } from 'viem';
-import { FACTORY_ADDRESS } from '@/config/constants';
+import { FACTORY_ADDRESS, CREATION_FEE, GRADUATION_TARGET } from '@/config/constants';
 import { MEME_FACTORY_ABI } from '@/config/abi';
 import { useNavigate } from 'react-router-dom';
 import { showToast } from '@/components/shared/Toast';
@@ -31,7 +31,7 @@ const CreateTokenPage: React.FC = () => {
   const handlePercentageSelect = (percent: number) => {
     if (!balanceData) return;
     const balance = Number(formatEther(balanceData.value));
-    const creationFee = 0.001;
+    const creationFee = Number(CREATION_FEE);
     
     if (percent === 100) {
       // For Max, we subtract creation fee and leave a bit more for gas (0.01)
@@ -88,7 +88,7 @@ const CreateTokenPage: React.FC = () => {
     try {
       setIsCasting(true);
 
-      const creationFee = parseEther('0.001');
+      const creationFee = parseEther(CREATION_FEE.toString());
       const buyAmount = formData.initialBuy ? parseEther(formData.initialBuy) : 0n;
       const totalValue = creationFee + buyAmount;
 
@@ -144,7 +144,7 @@ const CreateTokenPage: React.FC = () => {
               <div className="text-[10px] uppercase tracking-[0.12em] text-white/35 mt-1">Finality</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center">
-              <div className="text-xl md:text-2xl font-body font-extrabold text-white">0.001 ◈</div>
+              <div className="text-xl md:text-2xl font-body font-extrabold text-white">{CREATION_FEE} ◈</div>
               <div className="text-[10px] uppercase tracking-[0.12em] text-white/35 mt-1">Creation Fee</div>
             </div>
           </div>
@@ -244,13 +244,13 @@ const CreateTokenPage: React.FC = () => {
             <div className="p-6 rounded-2xl bg-primary/5 border border-primary/20 space-y-4">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-white/40 font-body">Creation Fee</span>
-                <span className="font-mono font-bold text-white/80">0.001 ◈</span>
+                <span className="font-mono font-bold text-white/80">{CREATION_FEE} ◈</span>
               </div>
               <div className="h-px w-full bg-white/5" />
               <div className="flex items-start gap-3">
                 <div className="w-5 h-5 rounded-full bg-emerald-400/20 flex items-center justify-center text-[10px]">✨</div>
                 <p className="text-[10px] text-white/40 leading-relaxed font-body">
-                  Your token will be launched on a bonding curve. Once it reaches the graduation goal of 6,900,000 MON, liquidity will be automatically migrated to Uniswap.
+                  Your token will be launched on a bonding curve. Once it reaches the graduation goal of {Number(GRADUATION_TARGET).toLocaleString()} MON, liquidity will be automatically migrated to Uniswap.
                 </p>
               </div>
             </div>
