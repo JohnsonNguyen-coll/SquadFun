@@ -3,11 +3,12 @@ import { gsap } from 'gsap';
 import { useGSAP } from '@gsap/react';
 
 interface BondingCurveBarProps {
-  progress: number; // 0 to 100
+  reserveMon: number | string;
 }
 
-const BondingCurveBar: React.FC<BondingCurveBarProps> = ({ progress }) => {
+const BondingCurveBar: React.FC<BondingCurveBarProps> = ({ reserveMon }) => {
   const fillRef = useRef<HTMLDivElement>(null);
+  const progress = Math.min(100, (Number(reserveMon) / 6900000) * 100);
 
   useGSAP(() => {
     if (!fillRef.current) return;
@@ -27,7 +28,7 @@ const BondingCurveBar: React.FC<BondingCurveBarProps> = ({ progress }) => {
             Bonding Curve Progress
           </h4>
           <p className="text-xs text-white/40 font-body">
-            Graduation Goal: <span className="text-white/80 font-mono font-bold">6900 ◈</span>
+            Graduation Goal: <span className="text-white/80 font-mono font-bold">6,900,000 ◈</span>
           </p>
         </div>
         <div className="text-right">
@@ -57,7 +58,7 @@ const BondingCurveBar: React.FC<BondingCurveBarProps> = ({ progress }) => {
 
       <div className="pt-4 flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/10">
         <p className="text-xs text-white/50 font-body leading-relaxed">
-          When the reserve reaches <span className="text-white/80 font-bold">6900 MON</span>, all liquidity is migrated to <span className="text-primary-highlight font-bold">Uniswap V2</span> and burned.
+          When the reserve reaches <span className="text-white/80 font-bold">6,900,000 MON</span> (or 70% supply sold), all liquidity is migrated to <span className="text-primary-highlight font-bold">Uniswap</span> and locked.
           The token is then "graduated" and enters the hall of fame.
         </p>
       </div>

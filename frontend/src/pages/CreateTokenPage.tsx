@@ -3,9 +3,10 @@ import PreviewCard from '@/components/create/PreviewCard';
 import GlowButton from '@/components/shared/GlowButton';
 import confetti from 'canvas-confetti';
 import { supabase } from '@/config/supabase';
-import { useAccount, useWriteContract } from 'wagmi';
-import { parseEther, parseAbi } from 'viem';
+import { useAccount, useWriteContract, useBalance } from 'wagmi';
+import { parseEther, formatEther } from 'viem';
 import { FACTORY_ADDRESS } from '@/config/constants';
+import { MEME_FACTORY_ABI } from '@/config/abi';
 import { useNavigate } from 'react-router-dom';
 
 const CreateTokenPage: React.FC = () => {
@@ -14,12 +15,34 @@ const CreateTokenPage: React.FC = () => {
   const { writeContractAsync } = useWriteContract();
   const [isCasting, setIsCasting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const { data: balanceData } = useBalance({
+    address: address,
+  });
+
   const [formData, setFormData] = useState({
     name: '',
     symbol: '',
     description: '',
     imageUrl: '',
+    initialBuy: '',
   });
+
+  const handlePercentageSelect = (percent: number) => {
+    if (!balanceData) return;
+    const balance = Number(formatEther(balanceData.value));
+    const creationFee = 0.001;
+    
+    if (percent === 100) {
+      // For Max, we subtract creation fee and leave a bit more for gas (0.01)
+      const maxBuy = Math.max(0, balance - creationFee - 0.01);
+      setFormData(prev => ({ ...prev, initialBuy: maxBuy.toFixed(4) }));
+    } else {
+      const amount = (balance * percent) / 100;
+      // Also ensure amount + fee < balance
+      const safeAmount = Math.max(0, Math.min(amount, balance - creationFee - 0.01));
+      setFormData(prev => ({ ...prev, initialBuy: safeAmount.toFixed(4) }));
+    }
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -64,14 +87,17 @@ const CreateTokenPage: React.FC = () => {
     try {
       setIsCasting(true);
 
+      const creationFee = parseEther('0.001');
+      const buyAmount = formData.initialBuy ? parseEther(formData.initialBuy) : 0n;
+      const totalValue = creationFee + buyAmount;
+
       const hash = await writeContractAsync({
         address: FACTORY_ADDRESS as `0x${string}`,
-        abi: parseAbi([
-          "function createToken(string name, string symbol, string description, string imageUrl) payable returns (address)"
-        ]),
+        abi: MEME_FACTORY_ABI,
         functionName: 'createToken',
         args: [formData.name, formData.symbol, formData.description, formData.imageUrl],
-        value: parseEther('0.001'),
+        value: totalValue,
+        gas: 3000000n, // Set explicit gas limit to bypass estimation issues
       } as any);
 
       console.log('Transaction hash:', hash);
@@ -117,7 +143,7 @@ const CreateTokenPage: React.FC = () => {
               <div className="text-[10px] uppercase tracking-[0.12em] text-white/35 mt-1">Finality</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center">
-              <div className="text-xl md:text-2xl font-body font-extrabold text-white">1.0 ◈</div>
+              <div className="text-xl md:text-2xl font-body font-extrabold text-white">0.001 ◈</div>
               <div className="text-[10px] uppercase tracking-[0.12em] text-white/35 mt-1">Creation Fee</div>
             </div>
           </div>
@@ -165,6 +191,33 @@ const CreateTokenPage: React.FC = () => {
             </div>
 
             <div className="space-y-2">
+              <label className="block text-[10px] uppercase tracking-[0.12em] font-semibold text-white/30 ml-1">Initial Buy (Optional MON)</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={formData.initialBuy}
+                  onChange={(e) => setFormData({ ...formData, initialBuy: e.target.value })}
+                  placeholder="0.0"
+                  className="w-full bg-background/60 border border-white/10 rounded-xl py-4 px-5 text-sm font-mono focus:outline-none focus:border-primary/60 transition-all placeholder:text-white/30"
+                />
+                <span className="absolute right-5 top-1/2 -translate-y-1/2 text-white/20 text-xs font-mono">MON</span>
+              </div>
+              <div className="flex gap-2 mt-2">
+                {[10, 20, 50, 100].map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => handlePercentageSelect(p)}
+                    className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 hover:border-primary/40 hover:bg-primary/5 text-[10px] font-mono font-bold transition-all text-white/40 hover:text-primary-highlight"
+                  >
+                    {p === 100 ? 'MAX' : `${p}%`}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[9px] text-white/20 ml-1 italic">* Tip: Buying early sets a strong floor and attracts investors.</p>
+            </div>
+
+            <div className="space-y-2">
               <label className="block text-[10px] uppercase tracking-[0.12em] font-semibold text-white/30 ml-1">Token Image</label>
               <div className="relative group cursor-pointer aspect-video w-full border-2 border-dashed border-white/10 rounded-2xl flex flex-col items-center justify-center hover:border-primary/40 hover:bg-white/5 transition-all overflow-hidden bg-background/40">
                 {formData.imageUrl ? (
@@ -190,13 +243,13 @@ const CreateTokenPage: React.FC = () => {
             <div className="p-6 rounded-2xl bg-primary/5 border border-primary/20 space-y-4">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-white/40 font-body">Creation Fee</span>
-                <span className="font-mono font-bold text-white/80">1.0 ◈</span>
+                <span className="font-mono font-bold text-white/80">0.001 ◈</span>
               </div>
               <div className="h-px w-full bg-white/5" />
               <div className="flex items-start gap-3">
                 <div className="w-5 h-5 rounded-full bg-emerald-400/20 flex items-center justify-center text-[10px]">✨</div>
                 <p className="text-[10px] text-white/40 leading-relaxed font-body">
-                  Your token will be launched on a bonding curve. Once it reaches the graduation goal of 6900 MON, liquidity will be automatically migrated to Uniswap.
+                  Your token will be launched on a bonding curve. Once it reaches the graduation goal of 6,900,000 MON, liquidity will be automatically migrated to Uniswap.
                 </p>
               </div>
             </div>

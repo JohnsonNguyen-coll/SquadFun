@@ -10,10 +10,10 @@ export interface Token {
   marketCap: number;
   price: number;
   priceChange24h: number;
-  reserveMon: bigint;
+  reserveMon: number;
   graduated: boolean;
-  totalSupply: bigint;
-  circulatingSupply: bigint;
+  totalSupply: number;
+  circulatingSupply: number;
 }
 
 export const MOCK_TOKENS: Token[] = [];

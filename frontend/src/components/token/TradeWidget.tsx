@@ -59,6 +59,7 @@ const TradeWidget: React.FC<TradeWidgetProps> = ({ token, onTradeSuccess }) => {
           functionName: 'buy',
           args: [0n], 
           value: parseEther(amount),
+          gas: 500000n,
         } as any);
       } else {
         hash = await writeContractAsync({
@@ -68,6 +69,7 @@ const TradeWidget: React.FC<TradeWidgetProps> = ({ token, onTradeSuccess }) => {
           ]),
           functionName: 'sell',
           args: [parseEther(amount), 0n],
+          gas: 500000n,
         } as any);
       }
       setPendingTxHash(hash);

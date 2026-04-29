@@ -19,35 +19,28 @@ const FACTORY_ABI = [
 
 const activeListeners = new Set<string>();
 
-const setupTokenListeners = (tokenAddress: string, symbol: string, provider: ethers.Provider) => {
-  if (activeListeners.has(tokenAddress.toLowerCase())) return;
-  
-  const contract = new ethers.Contract(tokenAddress, TOKEN_ABI, provider);
-  console.log(`  - Listening on: ${symbol} (${tokenAddress})`);
-
-  // 1. Listen for Purchases
-  contract.on("TokensPurchased", async (buyer, monIn, tokensOut, newPrice, event) => {
+// Helper to process a buy event (reusable for initial buy and subsequent buys)
+const processBuyEvent = async (tokenAddress: string, symbol: string, buyer: string, monIn: bigint, tokensOut: bigint, newPrice: bigint, txHash: string) => {
     const monAmountStr = ethers.formatEther(monIn);
     const tokenAmountStr = ethers.formatUnits(tokensOut, 18);
     const priceStr = ethers.formatEther(newPrice);
-    const txHash = event.log.transactionHash;
-
-    console.log(`\n💰 BUY EVENT: ${tokenAmountStr} ${symbol} bought by ${buyer}`);
     const lowerTxHash = txHash.toLowerCase();
     const lowerBuyer = buyer.toLowerCase();
+    const lowerTokenAddress = tokenAddress.toLowerCase();
 
     try {
-      // Kiểm tra xem txHash đã được xử lý chưa
       const existingTrade = await prisma.trade.findUnique({ where: { txHash: lowerTxHash } });
-      if (existingTrade) {
-        console.log(`⚠️ Transaction ${lowerTxHash} already indexed. Skipping.`);
-        return;
-      }
+      if (existingTrade) return;
+
+      const token = await prisma.token.findUnique({ where: { contractAddress: lowerTokenAddress } });
+      const currentReserve = Number(token?.reserveMon || 0);
+      const newReserve = currentReserve + Number(monAmountStr);
+      const newMC = (newReserve * 10 / 7).toString();
 
       await prisma.$transaction([
         prisma.trade.create({
           data: {
-            tokenAddress: tokenAddress.toLowerCase(),
+            tokenAddress: lowerTokenAddress,
             traderAddress: lowerBuyer,
             type: 'buy',
             ethAmount: monAmountStr,
@@ -58,12 +51,12 @@ const setupTokenListeners = (tokenAddress: string, symbol: string, provider: eth
           }
         }),
         prisma.token.update({
-          where: { contractAddress: tokenAddress },
+          where: { contractAddress: lowerTokenAddress },
           data: {
             price: priceStr,
-            circulatingSupply: { increment: tokenAmountStr },
-            reserveMon: { increment: monAmountStr },
-            marketCap: (Number(priceStr) * 1_000_000_000).toString()
+            circulatingSupply: { increment: Number(tokenAmountStr) },
+            reserveMon: newReserve,
+            marketCap: newMC
           } as any
         }),
         prisma.user.upsert({
@@ -73,74 +66,80 @@ const setupTokenListeners = (tokenAddress: string, symbol: string, provider: eth
         })
       ]);
 
-      console.log(`✅ Indexed Buy for ${symbol}. Broadcasting...`);
-      broadcast(tokenAddress, 'trade_update', {
-        tokenAddress: tokenAddress.toLowerCase(),
+      broadcast(lowerTokenAddress, 'trade_update', {
+        tokenAddress: lowerTokenAddress,
         type: 'buy',
         price: priceStr,
+        marketCap: newMC,
         monAmount: monAmountStr,
         tokenAmount: tokenAmountStr,
         traderAddress: buyer,
         txHash: txHash
       });
+      console.log(`✅ Indexed Buy for ${symbol}`);
     } catch (error) {
       console.error(`❌ Error indexing Buy for ${symbol}:`, error);
     }
+};
+
+const setupTokenListeners = (tokenAddress: string, symbol: string, provider: ethers.Provider) => {
+  if (activeListeners.has(tokenAddress.toLowerCase())) return;
+  const contract = new ethers.Contract(tokenAddress, TOKEN_ABI, provider);
+  console.log(`  - Listening on: ${symbol} (${tokenAddress})`);
+
+  contract.on("TokensPurchased", (buyer, monIn, tokensOut, newPrice, event) => {
+    processBuyEvent(tokenAddress, symbol, buyer, monIn, tokensOut, newPrice, event.log.transactionHash);
   });
 
-  // 2. Listen for Sales
   contract.on("TokensSold", async (seller, tokensIn, monOut, newPrice, event) => {
     const monAmountStr = ethers.formatEther(monOut);
     const tokenAmountStr = ethers.formatUnits(tokensIn, 18);
     const priceStr = ethers.formatEther(newPrice);
     const txHash = event.log.transactionHash;
 
-    console.log(`\n📉 SELL EVENT: ${tokenAmountStr} ${symbol} sold by ${seller}`);
-    const lowerTxHash = txHash.toLowerCase();
-    const lowerSeller = seller.toLowerCase();
-
     try {
-      // Kiểm tra xem txHash đã được xử lý chưa
-      const existingTrade = await prisma.trade.findUnique({ where: { txHash: lowerTxHash } });
-      if (existingTrade) {
-        console.log(`⚠️ Transaction ${lowerTxHash} already indexed. Skipping.`);
-        return;
-      }
+      const existingTrade = await prisma.trade.findUnique({ where: { txHash: txHash.toLowerCase() } });
+      if (existingTrade) return;
+
+      const token = await prisma.token.findUnique({ where: { contractAddress: tokenAddress.toLowerCase() } });
+      const currentReserve = Number(token?.reserveMon || 0);
+      const newReserve = Math.max(0, currentReserve - Number(monAmountStr));
+      const newMC = (newReserve * 10 / 7).toString();
 
       await prisma.$transaction([
         prisma.trade.create({
           data: {
             tokenAddress: tokenAddress.toLowerCase(),
-            traderAddress: lowerSeller,
+            traderAddress: seller.toLowerCase(),
             type: 'sell',
             ethAmount: monAmountStr,
             tokenAmount: tokenAmountStr,
             priceAtTrade: priceStr,
-            txHash: lowerTxHash,
+            txHash: txHash.toLowerCase(),
             timestamp: new Date()
           }
         }),
         prisma.token.update({
-          where: { contractAddress: tokenAddress },
+          where: { contractAddress: tokenAddress.toLowerCase() },
           data: {
             price: priceStr,
-            circulatingSupply: { decrement: tokenAmountStr },
-            reserveMon: { decrement: monAmountStr },
-            marketCap: (Number(priceStr) * 1_000_000_000).toString()
+            circulatingSupply: { decrement: Number(tokenAmountStr) },
+            reserveMon: newReserve,
+            marketCap: newMC
           } as any
         }),
         prisma.user.upsert({
-          where: { walletAddress: lowerSeller },
+          where: { walletAddress: seller.toLowerCase() },
           update: { totalTraded: { increment: 1 } },
-          create: { walletAddress: lowerSeller, totalTraded: 1, username: `user_${lowerSeller.slice(2, 6)}` }
+          create: { walletAddress: seller.toLowerCase(), totalTraded: 1, username: `user_${seller.toLowerCase().slice(2, 6)}` }
         })
       ]);
 
-      console.log(`✅ Indexed Sell for ${symbol}. Broadcasting...`);
-      broadcast(tokenAddress, 'trade_update', {
+      broadcast(tokenAddress.toLowerCase(), 'trade_update', {
         tokenAddress: tokenAddress.toLowerCase(),
         type: 'sell',
         price: priceStr,
+        marketCap: newMC,
         monAmount: monAmountStr,
         tokenAmount: tokenAmountStr,
         traderAddress: seller,
@@ -156,41 +155,27 @@ const setupTokenListeners = (tokenAddress: string, symbol: string, provider: eth
 
 export const startIndexer = async () => {
   console.log('🚀 Starting Blockchain Indexer...');
-
   const providerUrl = process.env.MONAD_WS_URL || process.env.RPC_URL || 'https://testnet-rpc.monad.xyz';
   
-  let provider: ethers.Provider;
-  if (providerUrl.startsWith('wss')) {
-    console.log('🌐 Using WebSocketProvider for indexer');
-    provider = new ethers.WebSocketProvider(providerUrl);
-  } else {
-    console.log('🌐 Using JsonRpcProvider for indexer');
-    provider = new ethers.JsonRpcProvider(providerUrl);
-    (provider as ethers.JsonRpcProvider).pollingInterval = 1000; // Poll every 1 second for faster updates
-  }
+  const provider = providerUrl.startsWith('wss') 
+    ? new ethers.WebSocketProvider(providerUrl)
+    : new ethers.JsonRpcProvider(providerUrl);
 
   try {
-    // 1. Setup listeners for existing tokens
     const tokens = await prisma.token.findMany();
-    console.log(`📦 Monitoring ${tokens.length} existing tokens...`);
     for (const token of tokens) {
       setupTokenListeners(token.contractAddress, token.symbol, provider);
     }
 
-    // 2. Setup listener for Factory to pick up NEW tokens
     const factoryAddress = process.env.FACTORY_ADDRESS;
     if (factoryAddress) {
-      console.log(`🏭 Listening for new tokens on Factory: ${factoryAddress}`);
       const factoryContract = new ethers.Contract(factoryAddress, FACTORY_ABI, provider);
-      
-      factoryContract.on("TokenCreated", async (tokenAddress, name, symbol, description, imageUrl, creator) => {
+      factoryContract.on("TokenCreated", async (tokenAddress, name, symbol, description, imageUrl, creator, event) => {
         const lowerTokenAddress = tokenAddress.toLowerCase();
-        const lowerCreator = creator.toLowerCase();
-        
-        console.log(`✨ NEW TOKEN DETECTED: ${name} (${symbol}) at ${lowerTokenAddress}`);
-        
+        const blockNumber = event.log.blockNumber;
+        const txHash = event.log.transactionHash;
+
         try {
-          // Create token in database
           await prisma.token.create({
             data: {
               contractAddress: lowerTokenAddress,
@@ -198,34 +183,39 @@ export const startIndexer = async () => {
               symbol,
               description,
               imageUrl,
-              creatorAddress: lowerCreator,
+              creatorAddress: creator.toLowerCase(),
               totalSupply: 1000000000,
               circulatingSupply: 0,
-              price: 0,
-              marketCap: 0,
+              price: "0", 
+              marketCap: "0", 
               reserveMon: 0
             } as any
           });
-
-          // Update creator's count
+          
           await prisma.user.upsert({
-            where: { walletAddress: lowerCreator },
+            where: { walletAddress: creator.toLowerCase() },
             update: { totalCreated: { increment: 1 } },
-            create: { walletAddress: lowerCreator, totalCreated: 1, username: `user_${lowerCreator.slice(2, 6)}` }
+            create: { walletAddress: creator.toLowerCase(), totalCreated: 1, username: `user_${creator.toLowerCase().slice(2, 6)}` }
           });
 
-          console.log(`✅ Indexed New Token: ${symbol}`);
-          
-          // Start listening to events for this new token
           setupTokenListeners(lowerTokenAddress, symbol, provider);
+
+          // Check for initial buy in the same block
+          const tokenContract = new ethers.Contract(tokenAddress, TOKEN_ABI, provider);
+          const filter = tokenContract.filters.TokensPurchased();
+          const logs = await tokenContract.queryFilter(filter, blockNumber, blockNumber);
+          
+          for (const log of logs) {
+            const parsed = tokenContract.interface.parseLog(log as any);
+            if (parsed) {
+              await processBuyEvent(tokenAddress, symbol, parsed.args.buyer, parsed.args.monIn, parsed.args.tokensOut, parsed.args.newPrice, log.transactionHash);
+            }
+          }
         } catch (error) {
           console.error('❌ Error indexing TokenCreated:', error);
-          // Still try to setup listeners if it already exists
-          setupTokenListeners(lowerTokenAddress, symbol, provider);
         }
       });
     }
-
   } catch (error) {
     console.error('❌ Failed to start indexer:', error);
   }

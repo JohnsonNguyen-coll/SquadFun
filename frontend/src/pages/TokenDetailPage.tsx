@@ -2,12 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { API_BASE_URL } from '@/config/constants';
 import type { Token } from '@/mocks/data';
-import { parseEther } from 'viem';
 import PriceChart from '@/components/token/PriceChart';
 import TradeWidget from '@/components/token/TradeWidget';
 import BondingCurveBar from '@/components/token/BondingCurveBar';
 import { formatAddress, formatTokenAmount, timeAgo } from '@/utils/format';
-import { GRADUATION_TARGET } from '@/config/constants';
 import { useAccount, useSignMessage } from 'wagmi';
 import { socket } from '@/socket';
 
@@ -97,7 +95,6 @@ const TokenDetailPage: React.FC = () => {
         socket.emit('subscribe', lowerAddress);
       };
 
-      // Subscribe immediately if already connected
       if (socket.connected) handleConnect();
 
       socket.on('connect', handleConnect);
@@ -106,7 +103,6 @@ const TokenDetailPage: React.FC = () => {
         if (data.tokenAddress.toLowerCase() === lowerAddress) {
           console.log('✅ Real-time trade update received:', data);
 
-          // Prepend new trade for instant feedback
           const newTrade = {
             id: `temp-${Date.now()}`,
             type: data.type,
@@ -127,12 +123,12 @@ const TokenDetailPage: React.FC = () => {
               ...prev,
               price: newPrice,
               circulatingSupply: data.type === 'buy'
-                ? prev.circulatingSupply + parseEther(data.tokenAmount)
-                : prev.circulatingSupply - parseEther(data.tokenAmount),
+                ? Number(prev.circulatingSupply || 0) + Number(data.tokenAmount)
+                : Number(prev.circulatingSupply || 0) - Number(data.tokenAmount),
               reserveMon: data.type === 'buy'
-                ? prev.reserveMon + parseEther(data.monAmount)
-                : prev.reserveMon - parseEther(data.monAmount),
-              marketCap: newPrice * 1_000_000_000
+                ? Number(prev.reserveMon || 0) + Number(data.monAmount)
+                : Number(prev.reserveMon || 0) - Number(data.monAmount),
+              marketCap: Number(data.marketCap)
             };
           });
 
@@ -182,7 +178,6 @@ const TokenDetailPage: React.FC = () => {
     );
   }
 
-  const graduationProgress = Number((parseEther(token.reserveMon?.toString() || '0') * 100n) / (GRADUATION_TARGET * 10n ** 18n));
   const topHolders = holders.map(h => ({
     wallet: h.wallet,
     formattedWallet: `${h.wallet.slice(0, 12)}...${h.wallet.slice(-8)}`,
@@ -207,16 +202,13 @@ const TokenDetailPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      {/* Back button */}
       <Link to="/" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors mb-12 group">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform"><path d="m15 18-6-6 6-6" /></svg>
         <span className="text-sm font-body font-semibold uppercase tracking-[0.08em]">Back to Market</span>
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-        {/* Left Column - Chart & Info */}
         <div className="lg:col-span-8 space-y-12">
-          {/* Token Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
             <div className="flex items-center gap-6">
               <img
@@ -452,11 +444,10 @@ const TokenDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column - Trade Widget & Progress */}
         <div className="lg:col-span-4 space-y-8">
           <TradeWidget token={token} onTradeSuccess={fetchData} />
           <div className="glass-card p-6">
-            <BondingCurveBar progress={graduationProgress} />
+            <BondingCurveBar reserveMon={Number(token.reserveMon || 0)} />
           </div>
 
           <div className="glass-card p-6 h-[500px] flex flex-col">

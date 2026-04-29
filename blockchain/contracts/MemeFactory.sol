@@ -41,8 +41,8 @@ contract MemeFactory is Ownable {
     ) external payable returns (address) {
         require(msg.value >= creationFee, "Insufficient creation fee");
 
-        // Transfer creation fee to treasury
-        (bool success, ) = platformTreasury.call{value: msg.value}("");
+        // Transfer ONLY creation fee to treasury
+        (bool success, ) = platformTreasury.call{value: creationFee}("");
         require(success, "Fee transfer failed");
 
         MemeToken newToken = new MemeToken(
@@ -55,6 +55,15 @@ contract MemeFactory is Ownable {
         );
 
         allTokens.push(address(newToken));
+
+        // Initial Buy logic: If dev sends more than creation fee, buy tokens for them
+        uint256 buyAmount = msg.value - creationFee;
+        if (buyAmount > 0) {
+            newToken.buy{value: buyAmount}(0);
+            // Transfer bought tokens from Factory to the actual creator
+            uint256 boughtAmount = newToken.balanceOf(address(this));
+            newToken.transfer(msg.sender, boughtAmount);
+        }
 
         emit TokenCreated(
             address(newToken),

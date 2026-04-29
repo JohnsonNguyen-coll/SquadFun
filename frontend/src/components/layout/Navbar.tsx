@@ -37,7 +37,7 @@ const Navbar: React.FC = () => {
 
         <div className="hidden md:flex items-center gap-8">
           <Link to="/market" className={`text-sm font-medium transition-colors ${isActive('/market') ? 'text-primary' : 'text-white/60 hover:text-white'}`}>Market</Link>
-          <Link to="/leaderboard" className={`text-sm font-medium transition-colors ${isActive('/leaderboard') ? 'text-primary' : 'text-white/60 hover:text-white'}`}>Hall of Fame</Link>
+          <Link to="/hall-of-fame" className={`text-sm font-medium transition-colors ${isActive('/hall-of-fame') ? 'text-primary' : 'text-white/60 hover:text-white'}`}>Hall of Fame</Link>
           <Link to="/create" className={`text-sm font-medium transition-colors ${isActive('/create') ? 'text-primary' : 'text-white/60 hover:text-white'}`}>Cast Spell</Link>
           {isConnected && (
             <Link to={`/profile/${address}`} className={`text-sm font-medium transition-colors ${isProfileActive() ? 'text-primary' : 'text-white/60 hover:text-white'}`}>My Profile</Link>
