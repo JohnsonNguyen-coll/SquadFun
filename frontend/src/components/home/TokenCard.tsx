@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import type { Token } from '@/mocks/data';
-import { formatMON, formatTokenAmount, timeAgo, getPriceChangeColor } from '@/utils/format';
+import { formatMON, formatTokenAmount, timeAgo } from '@/utils/format';
 import { GRADUATION_TARGET } from '@/config/constants';
 import { parseEther } from 'viem';
 

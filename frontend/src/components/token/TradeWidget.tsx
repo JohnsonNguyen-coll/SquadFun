@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import GlowButton from '@/components/shared/GlowButton';
-import { useWriteContract, useAccount, useBalance, useWaitForTransactionReceipt } from 'wagmi';
-import { parseEther, parseAbi, formatEther, type Hash } from 'viem';
+import { useWriteContract, useAccount, useBalance, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import { parseEther, parseAbi, formatEther, type Hash, erc20Abi } from 'viem';
 import type { Token } from '@/mocks/data';
 import confetti from 'canvas-confetti';
 import { showToast } from '@/components/shared/Toast';
@@ -30,10 +30,17 @@ const TradeWidget: React.FC<TradeWidgetProps> = ({ token, onTradeSuccess }) => {
   });
 
   // Fetch Token balance
-  const { data: tokenBalance } = useBalance({
-    address: address,
-    token: token.contractAddress as `0x${string}`,
+  const { data: tokenBalanceValue } = useReadContract({
+    address: token.contractAddress as `0x${string}`,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address,
+    }
   });
+
+  const tokenBalance = tokenBalanceValue !== undefined ? { value: tokenBalanceValue as bigint } : undefined;
 
   // Effect to handle success after transaction is mined
   React.useEffect(() => {
