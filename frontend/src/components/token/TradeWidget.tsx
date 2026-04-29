@@ -24,6 +24,17 @@ const TradeWidget: React.FC<TradeWidgetProps> = ({ token, onTradeSuccess }) => {
     hash: pendingTxHash,
   });
 
+  // Fetch MON balance
+  const { data: ethBalance } = useBalance({
+    address: address,
+  });
+
+  // Fetch Token balance
+  const { data: tokenBalance } = useBalance({
+    address: address,
+    token: token.contractAddress as `0x${string}`,
+  });
+
   // Effect to handle success after transaction is mined
   React.useEffect(() => {
     if (isTxConfirmed && pendingTxHash) {
@@ -37,13 +48,24 @@ const TradeWidget: React.FC<TradeWidgetProps> = ({ token, onTradeSuccess }) => {
         origin: { y: 0.6 },
         colors: mode === 'buy' ? ['#10b981', '#34d399', '#ffffff'] : ['#f43f5e', '#fb7185', '#ffffff']
       });
+      showToast(`${mode === 'buy' ? 'Buy' : 'Sell'} transaction confirmed!`, 'success');
     }
   }, [isTxConfirmed, pendingTxHash, onTradeSuccess, mode]);
 
-  // Get user balance for UI
-  const { data: ethBalance } = useBalance({
-    address: address,
-  });
+  const handlePercentageClick = (percent: number) => {
+    if (mode === 'buy') {
+      if (!ethBalance) return;
+      // Reserve some for gas (approx 0.01 MON)
+      const balance = Number(formatEther(ethBalance.value));
+      const calculated = Math.max(0, (balance - 0.01) * (percent / 100));
+      setAmount(calculated.toFixed(6));
+    } else {
+      if (!tokenBalance) return;
+      const balance = Number(formatEther(tokenBalance.value));
+      const calculated = balance * (percent / 100);
+      setAmount(calculated.toFixed(6));
+    }
+  };
 
   const handleTrade = async () => {
     if (!amount || isNaN(Number(amount))) return;
@@ -74,6 +96,7 @@ const TradeWidget: React.FC<TradeWidgetProps> = ({ token, onTradeSuccess }) => {
         } as any);
       }
       setPendingTxHash(hash);
+      showToast('Transaction submitted to Monad...', 'info');
     } catch (error: any) {
       console.error('Full trade error:', error);
       if (error.message?.includes('rejected')) {
@@ -90,13 +113,19 @@ const TradeWidget: React.FC<TradeWidgetProps> = ({ token, onTradeSuccess }) => {
     <div className="glass-card p-6 bg-surface/30 border-primary/30 backdrop-blur-2xl">
       <div className="flex gap-1 bg-background/50 p-1 rounded-xl mb-6">
         <button 
-          onClick={() => setMode('buy')}
+          onClick={() => {
+            setMode('buy');
+            setAmount('');
+          }}
           className={`flex-1 py-2.5 rounded-lg text-sm font-body font-semibold uppercase tracking-[0.08em] transition-all ${mode === 'buy' ? 'bg-emerald-400 text-background' : 'text-white/40 hover:text-white/60'}`}
         >
           Buy
         </button>
         <button 
-          onClick={() => setMode('sell')}
+          onClick={() => {
+            setMode('sell');
+            setAmount('');
+          }}
           className={`flex-1 py-2.5 rounded-lg text-sm font-body font-semibold uppercase tracking-[0.08em] transition-all ${mode === 'sell' ? 'bg-red-400 text-white' : 'text-white/40 hover:text-white/60'}`}
         >
           Sell
@@ -122,18 +151,24 @@ const TradeWidget: React.FC<TradeWidgetProps> = ({ token, onTradeSuccess }) => {
 
         <div className="flex justify-between px-1">
           <div className="flex gap-2">
-            {[0.1, 0.5, 1].map(v => (
+            {[25, 50, 100].map(v => (
               <button 
                 key={v} 
-                onClick={() => setAmount(v.toString())}
-                className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 text-[10px] font-mono font-bold transition-all"
+                onClick={() => handlePercentageClick(v)}
+                className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 text-[10px] font-mono font-bold transition-all text-white/60 hover:text-white"
               >
-                {v} {mode === 'buy' ? '◈' : 'M'}
+                {v === 100 ? 'MAX' : `${v}%`}
               </button>
             ))}
           </div>
           <div className="text-[10px] font-mono text-white/40">
-            Balance: <span className="text-white/60">{ethBalance ? Number(formatEther(ethBalance.value)).toFixed(4) : '0.0000'}</span>
+            Balance: <span className="text-white/60">
+              {mode === 'buy' 
+                ? (ethBalance ? Number(formatEther(ethBalance.value)).toFixed(4) : '0.0000')
+                : (tokenBalance ? Number(formatEther(tokenBalance.value)).toFixed(2) : '0.00')
+              }
+              {mode === 'buy' ? ' ◈' : ` ${token.symbol}`}
+            </span>
           </div>
         </div>
       </div>
