@@ -17,6 +17,7 @@ const TokenDetailPage: React.FC = () => {
   const [activeInsightTab, setActiveInsightTab] = useState<'trades' | 'holders'>('trades');
   const [tradesPage, setTradesPage] = useState(1);
   const [holdersPage, setHoldersPage] = useState(1);
+  const [commentsPage, setCommentsPage] = useState(1);
   const [token, setToken] = useState<Token | null>(null);
   const [trades, setTrades] = useState<any[]>([]);
   const [comments, setComments] = useState<any[]>([]);
@@ -174,7 +175,7 @@ const TokenDetailPage: React.FC = () => {
         <div className="text-6xl mb-6">👻</div>
         <h2 className="text-3xl font-body font-black tracking-normal mb-4">Spell Not Found</h2>
         <p className="text-white/40 mb-8 font-body">The token you are looking for has vanished into the ether.</p>
-        <Link to="/" className="text-primary hover:text-primary-bright font-body font-semibold uppercase tracking-[0.08em] text-sm">
+        <Link to="/market" className="text-primary hover:text-primary-bright font-body font-semibold uppercase tracking-[0.08em] text-sm">
           Return to Market
         </Link>
       </div>
@@ -200,18 +201,22 @@ const TokenDetailPage: React.FC = () => {
     time: timeAgo(t.timestamp),
     txHash: t.txHash
   }));
-  const tradesPerPage = 4;
+  const tradesPerPage = 7;
   const holdersPerPage = 5;
-  const graduationProgress = Math.min(100, Number((parseEther(token.reserveMon?.toString() || '0') * 100n) / (GRADUATION_TARGET * 10n**18n)));
+  const graduationProgress = Math.min(100, Number((parseEther(token.reserveMon?.toString() || '0') * 100n) / (GRADUATION_TARGET * 10n ** 18n)));
 
   const totalTradesPages = Math.max(1, Math.ceil(trades.length / tradesPerPage));
   const totalHoldersPages = Math.max(1, Math.ceil(topHolders.length / holdersPerPage));
   const visibleTrades = recentTrades.slice((tradesPage - 1) * tradesPerPage, tradesPage * tradesPerPage);
   const visibleHolders = topHolders.slice((holdersPage - 1) * holdersPerPage, holdersPage * holdersPerPage);
 
+  const commentsPerPage = 5;
+  const totalCommentsPages = Math.max(1, Math.ceil(comments.length / commentsPerPage));
+  const visibleComments = comments.slice((commentsPage - 1) * commentsPerPage, commentsPage * commentsPerPage);
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      <Link to="/" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors mb-12 group">
+      <Link to="/market" className="inline-flex items-center gap-2 text-white/40 hover:text-white transition-colors mb-12 group">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:-translate-x-1 transition-transform"><path d="m15 18-6-6 6-6" /></svg>
         <span className="text-sm font-body font-semibold uppercase tracking-[0.08em]">Back to Market</span>
       </Link>
@@ -262,19 +267,45 @@ const TokenDetailPage: React.FC = () => {
           <PriceChart tokenAddress={token.contractAddress} currentPrice={Number(token.price || 0)} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="glass-card p-6 space-y-4">
-              <h3 className="text-lg font-body font-extrabold tracking-normal mb-4 flex items-center gap-2">
+            <div className="glass-card p-6 flex flex-col">
+              <h3 className="text-lg font-body font-extrabold tracking-normal mb-6">
                 Token Lore
               </h3>
-              <p className="text-sm text-white/60 font-body leading-relaxed">
-                {token.description}
-              </p>
-              <div className="pt-4 flex flex-wrap gap-2">
-                <div className="px-3 py-1.5 rounded-lg bg-background/50 border border-white/5 text-[10px] font-mono font-bold text-white/40 uppercase">
-                  Contract: {formatAddress(token.contractAddress)}
+
+              <div className="flex-1">
+                <p className="text-base text-white/90 font-body leading-relaxed">
+                  {token.description || 'No lore has been written for this spell yet...'}
+                </p>
+              </div>
+
+              <div className="mt-8 pt-6 border-t border-white/5 space-y-4">
+                <div className="flex items-center justify-between group/addr">
+                  <div className="space-y-1">
+                    <span className="text-[9px] uppercase tracking-widest text-white/40 font-bold block">Contract Address</span>
+                    <span className="text-xs font-mono text-white/70 group-hover/addr:text-primary-highlight transition-colors cursor-default">
+                      {token.contractAddress}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(token.contractAddress);
+                      showToast('Address copied!', 'success');
+                    }}
+                    className="p-2 rounded-lg bg-white/5 hover:bg-primary/20 text-white/40 hover:text-primary transition-all"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
+                  </button>
                 </div>
-                <div className="px-3 py-1.5 rounded-lg bg-background/50 border border-white/5 text-[10px] font-mono font-bold text-white/40 uppercase">
-                  Finality: Instant
+
+                <div className="flex items-center gap-4 text-[10px] font-mono font-bold text-white/40 tracking-widest">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-1 rounded-full bg-emerald-500/80" />
+                    Finality: Instant
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-1 rounded-full bg-primary/80" />
+                    Chain: Monad
+                  </div>
                 </div>
               </div>
             </div>
@@ -286,25 +317,40 @@ const TokenDetailPage: React.FC = () => {
               <div className="space-y-6">
                 <div>
                   <div className="flex justify-between text-[10px] font-semibold uppercase tracking-[0.1em] text-white/40 mb-2">
-                    <span>Circulating</span>
-                    <span>{((Number(token.circulatingSupply || 0) / Number(token.totalSupply || 1)) * 100).toFixed(1)}%</span>
+                    <span>Circulating / Sold</span>
+                    <span>{formatTokenAmount(Number(token.circulatingSupply || 0))} / {formatTokenAmount(Number(token.totalSupply || 1) * 0.8)}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] font-mono font-bold text-primary-highlight mb-2">
+                    <span>{((Number(token.circulatingSupply || 0) / Number(token.totalSupply || 1)) * 100).toFixed(4)}%</span>
                   </div>
                   <div className="h-1.5 w-full bg-background rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-primary-highlight"
-                      style={{ width: `${(Number(token.circulatingSupply || 0) / Number(token.totalSupply || 1)) * 100}%` }}
+                      className="h-full bg-primary-highlight shadow-[0_0_10px_rgba(236,72,153,0.4)] transition-all duration-1000"
+                      style={{ width: `${Math.max(1, (Number(token.circulatingSupply || 0) / (Number(token.totalSupply || 1) * 0.8)) * 100)}%` }}
                     />
                   </div>
                 </div>
                 <div>
                   <div className="flex justify-between text-[10px] font-semibold uppercase tracking-[0.1em] text-white/40 mb-2">
-                    <span>Locked (Bonding)</span>
-                    <span>{(100 - (Number(token.circulatingSupply || 0) / Number(token.totalSupply || 1)) * 100).toFixed(1)}%</span>
+                    <span>Bonding Curve Reserve</span>
+                    <span>{formatTokenAmount((Number(token.totalSupply || 1) * 0.8) - Number(token.circulatingSupply || 0))}</span>
                   </div>
                   <div className="h-1.5 w-full bg-background rounded-full overflow-hidden">
                     <div
                       className="h-full bg-white/10"
-                      style={{ width: `${100 - (Number(token.circulatingSupply || 0) / Number(token.totalSupply || 1)) * 100}%` }}
+                      style={{ width: `${100 - (Number(token.circulatingSupply || 0) / (Number(token.totalSupply || 1) * 0.8)) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="pt-4 border-t border-white/5">
+                  <div className="flex justify-between text-[10px] font-semibold uppercase tracking-[0.1em] text-white/20 mb-2">
+                    <span>Reserved for Liquidity</span>
+                    <span>200.0M</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-white/[0.02] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-monad/20"
+                      style={{ width: `100%` }}
                     />
                   </div>
                 </div>
@@ -312,7 +358,7 @@ const TokenDetailPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="glass-card p-6 h-[420px] flex flex-col">
+          <div className="glass-card p-6 h-[550px] flex flex-col">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-body font-extrabold tracking-normal flex items-center gap-2">
                 {activeInsightTab === 'trades' ? 'Recent Trades' : 'Top Holders'}
@@ -468,7 +514,7 @@ const TokenDetailPage: React.FC = () => {
               <span className="font-mono text-lg font-black text-primary">{graduationProgress}%</span>
             </div>
             <div className="h-4 w-full bg-background rounded-full overflow-hidden p-1 border border-white/5 mb-4">
-              <div 
+              <div
                 className="h-full bg-gradient-to-r from-primary to-monad rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(236,72,153,0.5)]"
                 style={{ width: `${graduationProgress}%` }}
               />
@@ -482,35 +528,62 @@ const TokenDetailPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="glass-card p-6 border-monad/20">
-            <h3 className="text-lg font-body font-extrabold tracking-normal mb-6 flex items-center gap-2">
+          <div className="glass-card p-6 border-monad/20 h-[550px] flex flex-col">
+            <h3 className="text-lg font-body font-extrabold tracking-normal mb-5 flex items-center gap-2">
               <span className="text-2xl">💬</span> Alchemist Chat
             </h3>
-            <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar mb-6">
-              {comments.length > 0 ? (
-                comments.map((comment, index) => (
-                  <div key={comment.id || index} className="group">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-mono font-bold text-primary-highlight">
-                        {formatAddress(comment.authorAddress)}
-                      </span>
-                      <span className="text-[10px] text-white/20">
-                        {timeAgo(comment.createdAt)}
-                      </span>
+
+            <div className="flex-1 min-h-0 flex flex-col justify-between">
+              <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1">
+                {visibleComments.length > 0 ? (
+                  visibleComments.map((comment, index) => (
+                    <div key={comment.id || index} className="group">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-mono font-bold text-primary-highlight">
+                          {formatAddress(comment.authorAddress)}
+                        </span>
+                        <span className="text-[10px] text-white/20">
+                          {timeAgo(comment.createdAt)}
+                        </span>
+                      </div>
+                      <div className="bg-white/[0.03] border border-white/5 rounded-xl px-4 py-3 text-sm text-white/80 font-body leading-relaxed group-hover:border-white/10 transition-colors">
+                        {comment.content}
+                      </div>
                     </div>
-                    <div className="bg-white/[0.03] border border-white/5 rounded-xl px-4 py-3 text-sm text-white/80 font-body leading-relaxed group-hover:border-white/10 transition-colors">
-                      {comment.content}
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-white/20">
+                    <div className="text-3xl mb-2">🧊</div>
+                    <p className="text-sm">Crystal ball is quiet... <br /> Be the first to speak!</p>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-12 text-white/20">
-                  <div className="text-3xl mb-2">🧊</div>
-                  <p className="text-sm">Crystal ball is quiet... <br /> Be the first to speak!</p>
+                )}
+              </div>
+
+              {/* Comments Pagination */}
+              {comments.length > 0 && (
+                <div className="py-2 mb-4 border-t border-white/5 flex items-center justify-between">
+                  <span className="text-[10px] text-white/30">Page {commentsPage}/{totalCommentsPages}</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setCommentsPage(p => Math.max(1, p - 1))}
+                      disabled={commentsPage === 1}
+                      className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold uppercase tracking-widest text-white/60 disabled:opacity-20 transition-all"
+                    >
+                      Prev
+                    </button>
+                    <button
+                      onClick={() => setCommentsPage(p => Math.min(totalCommentsPages, p + 1))}
+                      disabled={commentsPage === totalCommentsPages}
+                      className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[9px] font-bold uppercase tracking-widest text-white/60 disabled:opacity-20 transition-all"
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
-            <div className="relative mt-auto">
+
+            <div className="relative mt-auto pt-2">
               <textarea
                 placeholder={userAddress ? "Cast your message..." : "Connect wallet to chat..."}
                 disabled={!userAddress || isSendingComment}
@@ -522,12 +595,12 @@ const TokenDetailPage: React.FC = () => {
                     handleSendComment();
                   }
                 }}
-                className="w-full bg-background/50 border border-white/5 rounded-xl py-4 px-5 pr-12 text-sm font-body focus:outline-none focus:border-primary/50 min-h-[100px] resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-background/50 border border-white/5 rounded-xl py-3 px-4 pr-12 text-sm font-body focus:outline-none focus:border-primary/50 h-[80px] resize-none disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
                 onClick={handleSendComment}
                 disabled={!userAddress || isSendingComment || !newMessage.trim()}
-                className="absolute bottom-4 right-4 text-primary hover:text-primary-bright transition-colors disabled:opacity-0"
+                className="absolute bottom-3 right-3 text-primary hover:text-primary-bright transition-colors disabled:opacity-0"
               >
                 {isSendingComment ? (
                   <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />

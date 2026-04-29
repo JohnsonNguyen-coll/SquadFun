@@ -45,3 +45,7 @@ export const broadcast = (address: string, type: string, data: any) => {
   // Also emit to global feed
   io.emit('global_update', { address: lowerAddress, type, data });
 };
+export const broadcastTokenCreated = (token: any) => {
+  if (!io) return;
+  io.emit('token_created', token);
+};

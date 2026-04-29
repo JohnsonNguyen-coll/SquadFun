@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
-import { broadcast } from './socketService.js';
+import { broadcast, broadcastTokenCreated } from './socketService.js';
 
 dotenv.config();
 
@@ -192,7 +192,7 @@ export const startIndexer = async () => {
         const blockNumber = event.log.blockNumber;
 
         try {
-          await prisma.token.create({
+          const newToken = await prisma.token.create({
             data: {
               contractAddress: lowerTokenAddress,
               name,
@@ -208,6 +208,8 @@ export const startIndexer = async () => {
               priceChange24h: 0
             } as any
           });
+
+          broadcastTokenCreated(newToken);
           
           await prisma.user.upsert({
             where: { walletAddress: creator.toLowerCase() },

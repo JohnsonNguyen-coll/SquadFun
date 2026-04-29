@@ -4,12 +4,15 @@ import TabFilter from '@/components/home/TabFilter';
 import TokenGrid from '@/components/home/TokenGrid';
 import { API_BASE_URL } from '@/config/constants';
 import type { Token } from '@/mocks/data';
+import { socket } from '@/socket';
 
 const MarketPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [tokens, setTokens] = useState<Token[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
 
   const fetchTokens = async () => {
     try {
@@ -25,7 +28,21 @@ const MarketPage: React.FC = () => {
 
   useEffect(() => {
     fetchTokens();
+
+    socket.on('token_created', (newToken) => {
+      console.log('New token created:', newToken);
+      fetchTokens();
+    });
+
+    return () => {
+      socket.off('token_created');
+    };
   }, []);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery]);
 
   const filteredTokens = useMemo(() => {
     let list = [...tokens];
@@ -50,6 +67,9 @@ const MarketPage: React.FC = () => {
     
     return list;
   }, [activeTab, searchQuery, tokens]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTokens.length / itemsPerPage));
+  const paginatedTokens = filteredTokens.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="pb-24">
@@ -123,7 +143,46 @@ const MarketPage: React.FC = () => {
           </div>
         ) : (
           <>
-            <TokenGrid tokens={filteredTokens} />
+            <TokenGrid tokens={paginatedTokens} />
+            
+            {/* Pagination */}
+            {filteredTokens.length > 0 && (
+              <div className="mt-12 flex flex-col md:flex-row items-center justify-between gap-6 px-4">
+                <span className="text-xs font-body font-medium text-white/30 uppercase tracking-[0.1em]">
+                  Showing {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredTokens.length)} of {filteredTokens.length} Tokens
+                </span>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setCurrentPage(p => Math.max(1, p - 1));
+                      window.scrollTo({ top: 400, behavior: 'smooth' });
+                    }}
+                    disabled={currentPage === 1}
+                    className="h-11 px-6 rounded-xl border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-widest text-white/60 hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                  >
+                    Previous
+                  </button>
+                  
+                  <div className="flex items-center gap-1 px-2">
+                    <span className="text-sm font-bold text-primary">{currentPage}</span>
+                    <span className="text-sm font-bold text-white/20">/</span>
+                    <span className="text-sm font-bold text-white/40">{totalPages}</span>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setCurrentPage(p => Math.min(totalPages, p + 1));
+                      window.scrollTo({ top: 400, behavior: 'smooth' });
+                    }}
+                    disabled={currentPage === totalPages}
+                    className="h-11 px-6 rounded-xl border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-widest text-white/60 hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
             
             {filteredTokens.length === 0 && (
               <div className="py-32 text-center">
