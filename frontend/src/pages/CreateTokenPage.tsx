@@ -111,7 +111,7 @@ const CreateTokenPage: React.FC = () => {
       });
 
       showToast('Spell cast successfully! Your token is being created on Monad.', 'success');
-      navigate('/');
+      navigate('/market');
     } catch (error) {
       console.error('Error creating token:', error);
       showToast('Failed to cast spell. Please check your wallet.', 'error');

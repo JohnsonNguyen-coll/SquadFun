@@ -202,13 +202,15 @@ export const startIndexer = async () => {
 
           // Check for initial buy in the same block
           const tokenContract = new ethers.Contract(tokenAddress, TOKEN_ABI, provider);
-          const filter = tokenContract.filters.TokensPurchased();
-          const logs = await tokenContract.queryFilter(filter, blockNumber, blockNumber);
-          
-          for (const log of logs) {
-            const parsed = tokenContract.interface.parseLog(log as any);
-            if (parsed) {
-              await processBuyEvent(tokenAddress, symbol, parsed.args.buyer, parsed.args.monIn, parsed.args.tokensOut, parsed.args.newPrice, log.transactionHash);
+          if (tokenContract.filters && tokenContract.filters.TokensPurchased) {
+            const filter = tokenContract.filters.TokensPurchased();
+            const logs = await tokenContract.queryFilter(filter, blockNumber, blockNumber);
+            
+            for (const log of logs) {
+              const parsed = tokenContract.interface.parseLog(log as any);
+              if (parsed) {
+                await processBuyEvent(tokenAddress, symbol, parsed.args.buyer, parsed.args.monIn, parsed.args.tokensOut, parsed.args.newPrice, log.transactionHash);
+              }
             }
           }
         } catch (error) {
