@@ -96,19 +96,20 @@ const MarketPage: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-3 gap-3 md:gap-4 min-w-full sm:min-w-[420px] lg:min-w-[430px]">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center">
-                <div className="text-xl md:text-2xl font-body font-extrabold text-primary-highlight">{tokens.length}</div>
-                <div className="text-[10px] uppercase tracking-[0.12em] text-white/40 mt-1">Listed</div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 flex flex-col items-center justify-center text-center min-h-[110px]">
+                <div className="text-xl md:text-2xl font-body font-extrabold text-primary-highlight leading-none">{tokens.length}</div>
+                <div className="text-[10px] uppercase tracking-[0.12em] text-white/40 mt-1.5 leading-none">Listed</div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center">
-                <div className="text-xl md:text-2xl font-body font-extrabold text-white">{tokens.filter((t) => t.graduated).length}</div>
-                <div className="text-[10px] uppercase tracking-[0.12em] text-white/40 mt-1">Graduated</div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 flex flex-col items-center justify-center text-center min-h-[110px]">
+                <div className="text-xl md:text-2xl font-body font-extrabold text-white leading-none">{tokens.filter((t) => t.graduated).length}</div>
+                <div className="text-[10px] uppercase tracking-[0.12em] text-white/40 mt-1.5 leading-none">Graduated</div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center">
-                <div className="text-xl md:text-2xl font-body font-extrabold text-primary-highlight">
-                  ◈ {(tokens.reduce((sum, token) => sum + Number(token.marketCap || 0), 0) / 1000).toFixed(1)}K
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 flex flex-col items-center justify-center text-center min-h-[110px]">
+                <div className="text-xl md:text-2xl font-body font-extrabold text-primary-highlight leading-none flex items-center gap-1.5">
+                  <span className="text-sm md:text-base opacity-70">◈</span>
+                  {(tokens.reduce((sum, token) => sum + Number(token.marketCap || 0), 0) / 1000).toFixed(1)}K
                 </div>
-                <div className="text-[10px] uppercase tracking-[0.12em] text-white/40 mt-1">Market Cap</div>
+                <div className="text-[10px] uppercase tracking-[0.12em] text-white/40 mt-1.5 leading-none">Market Cap</div>
               </div>
             </div>
           </div>
