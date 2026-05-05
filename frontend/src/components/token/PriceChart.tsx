@@ -17,6 +17,7 @@ const PriceChart: React.FC<PriceChartProps> = ({ tokenAddress, currentPrice }) =
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState('1h');
   const [priceChange, setPriceChange] = useState(0);
+  const [firstPrice, setFirstPrice] = useState<number | null>(null);
 
   const fetchChartData = async () => {
     try {
@@ -34,10 +35,11 @@ const PriceChart: React.FC<PriceChartProps> = ({ tokenAddress, currentPrice }) =
       if (seriesRef.current) {
         seriesRef.current.setData(formattedData);
         
-        if (formattedData.length > 1) {
-          const first = formattedData[0].close;
+        if (formattedData.length > 0) {
+          const first = formattedData[0].open;
           const last = formattedData[formattedData.length - 1].close;
-          setPriceChange(((last - first) / first) * 100);
+          setFirstPrice(first);
+          setPriceChange(first !== 0 ? ((last - first) / first) * 100 : 0);
         }
       }
     } catch (error) {
@@ -46,6 +48,12 @@ const PriceChart: React.FC<PriceChartProps> = ({ tokenAddress, currentPrice }) =
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (firstPrice !== null && currentPrice !== undefined) {
+      setPriceChange(firstPrice !== 0 ? ((currentPrice - firstPrice) / firstPrice) * 100 : 0);
+    }
+  }, [currentPrice, firstPrice]);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -141,7 +149,7 @@ const PriceChart: React.FC<PriceChartProps> = ({ tokenAddress, currentPrice }) =
               {currentPrice ? Number(currentPrice).toFixed(10) : '0.000000'} ◈
             </span>
             <span className={`text-sm font-mono font-bold ${priceChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
+              {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(3)}%
             </span>
           </div>
         </div>
