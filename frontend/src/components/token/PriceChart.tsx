@@ -9,19 +9,42 @@ interface PriceChartProps {
   currentPrice?: number;
 }
 
+const TIMEFRAME_SECONDS: Record<string, number> = {
+  '1m': 60,
+  '5m': 300,
+  '1h': 3600,
+  '1d': 86400,
+};
+
 const PriceChart: React.FC<PriceChartProps> = ({ tokenAddress, currentPrice }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const currentCandleRef = useRef<CandlestickData | null>(null);
+  const fetchTimeoutRef = useRef<any>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState('1h');
+  const timeframeRef = useRef(timeframe);
   const [priceChange, setPriceChange] = useState(0);
   const [firstPrice, setFirstPrice] = useState<number | null>(null);
 
+  useEffect(() => {
+    timeframeRef.current = timeframe;
+  }, [timeframe]);
+
   const fetchChartData = async () => {
+    // Abort previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
     try {
-      const response = await fetch(`${API_BASE_URL}/tokens/${tokenAddress}/chart?timeframe=${timeframe}`);
+      const response = await fetch(`${API_BASE_URL}/tokens/${tokenAddress}/chart?timeframe=${timeframeRef.current}`, {
+        signal: abortControllerRef.current.signal
+      });
       const candles = await response.json();
       
       const formattedData: CandlestickData[] = candles.map((c: any) => ({
@@ -37,12 +60,12 @@ const PriceChart: React.FC<PriceChartProps> = ({ tokenAddress, currentPrice }) =
         
         if (formattedData.length > 0) {
           const first = formattedData[0].open;
-          const last = formattedData[formattedData.length - 1].close;
-          setFirstPrice(first);
-          setPriceChange(first !== 0 ? ((last - first) / first) * 100 : 0);
+          setFirstPrice(prev => prev === null ? first : prev);
+          currentCandleRef.current = formattedData[formattedData.length - 1];
         }
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'AbortError') return;
       console.error('Error fetching chart data:', error);
     } finally {
       setLoading(false);
@@ -110,21 +133,28 @@ const PriceChart: React.FC<PriceChartProps> = ({ tokenAddress, currentPrice }) =
     const tradeUpdateHandler = (update: any) => {
       if (update.tokenAddress.toLowerCase() === tokenAddress.toLowerCase()) {
         const price = Number(update.price);
-        const time = Math.floor(Date.now() / 1000) as Time;
+        const now = Math.floor(Date.now() / 1000);
+        const bucketSeconds = TIMEFRAME_SECONDS[timeframeRef.current] || 3600;
+        const bucketTime = (Math.floor(now / bucketSeconds) * bucketSeconds) as Time;
         
+        const prev = currentCandleRef.current;
+        
+        const updatedCandle: CandlestickData = {
+          time: bucketTime,
+          open: prev && Number(prev.time) === Number(bucketTime) ? prev.open : price,
+          high: prev && Number(prev.time) === Number(bucketTime) ? Math.max(prev.high, price) : price,
+          low: prev && Number(prev.time) === Number(bucketTime) ? Math.min(prev.low, price) : price,
+          close: price,
+        };
+
         if (seriesRef.current) {
-          // Update the current candle with the new price
-          seriesRef.current.update({
-            time: time,
-            open: price, 
-            high: price,
-            low: price,
-            close: price,
-          });
+          seriesRef.current.update(updatedCandle);
         }
+        currentCandleRef.current = updatedCandle;
         
-        // Also refresh the full chart data after a short delay to get the proper OHLC buckets
-        setTimeout(fetchChartData, 2000);
+        // Debounce fetching to avoid spamming
+        if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = setTimeout(fetchChartData, 5000);
       }
     };
 
@@ -136,8 +166,18 @@ const PriceChart: React.FC<PriceChartProps> = ({ tokenAddress, currentPrice }) =
       socket.off('connect', handleConnect);
       socket.off('trade_update', tradeUpdateHandler);
       socket.emit('unsubscribe', tokenAddress.toLowerCase());
+      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
     };
   }, [tokenAddress, timeframe]);
+
+  const handleTimeframeChange = (p: string) => {
+    setFirstPrice(null);
+    setPriceChange(0);
+    currentCandleRef.current = null;
+    setLoading(true);
+    setTimeframe(p);
+  };
 
   return (
     <div className="p-4 glass-card relative overflow-hidden">
@@ -157,7 +197,7 @@ const PriceChart: React.FC<PriceChartProps> = ({ tokenAddress, currentPrice }) =
           {['1m', '5m', '1h', '1d'].map(p => (
             <button 
               key={p} 
-              onClick={() => setTimeframe(p)}
+              onClick={() => handleTimeframeChange(p)}
               className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all uppercase ${timeframe === p ? 'bg-primary text-white' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
             >
               {p}
