@@ -30,7 +30,7 @@ export const monadMainnet = defineChain({
 
 export const config = getDefaultConfig({
   appName: 'SquadFun',
-  projectId: 'YOUR_WALLETCONNECT_PROJECT_ID',
+  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '7ef117d4b3274c139b0a68c153285702', // Fallback to a random valid-length string
   chains: [monadMainnet, monadTestnet],
   transports: {
     [monadMainnet.id]: http(),
