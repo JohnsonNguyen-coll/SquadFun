@@ -61,10 +61,10 @@ const HomePage: React.FC = () => {
               </p>
 
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2">
-                <GlowButton onClick={() => navigate('/market')} className="!w-full sm:!w-56 !py-4 !text-base">
+                <GlowButton onClick={() => navigate('/market')} className="!w-full sm:!w-64 !py-4 !text-base">
                   View Market
                 </GlowButton>
-                <GlowButton variant="secondary" onClick={() => navigate('/create')} className="!w-full sm:!w-56 !py-4 !text-base">
+                <GlowButton variant="secondary" onClick={() => navigate('/create')} className="!w-full sm:!w-64 !py-4 !text-base">
                   Create Token
                 </GlowButton>
               </div>
